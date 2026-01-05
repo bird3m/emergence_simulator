@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using TMPro;
 
 
 /* Simple GA that evolves Traits.chromosm (9 genes) and reads fitness directly from Traits.Fitness01().
@@ -32,7 +33,16 @@ public class GeneticAlgorithm : MonoBehaviour
     private System.Random rng = new System.Random();
 
     private global::Terrain terrain;
+    [Header("UI")]
+    public TMP_Text upperAvgText;
+    public TMP_Text lowerAvgText;
 
+    [Header("Plot")]
+    public LineGraph upperGraph;
+    public LineGraph lowerGraph;
+
+    private List<float> upperHistory = new List<float>();
+    private List<float> lowerHistory = new List<float>();
 
     private void Start()
     {
@@ -46,7 +56,48 @@ public class GeneticAlgorithm : MonoBehaviour
 
         InitPopulation();
         SpawnPopulation();
+        UpdateHeuristicAveragesUI();
     }
+
+    private void UpdateHeuristicAveragesUI()
+    {
+        if (population == null || population.Count == 0) return;
+
+        double sumUpper = 0.0;
+        double sumLower = 0.0;
+
+        for (int i = 0; i < population.Count; i++)
+        {
+            float[] c = population[i].chrom;
+            if (c == null || c.Length < 7) continue;
+
+            sumUpper += c[5];
+            sumLower += c[6];
+        }
+
+        float avgUpper = (float)(sumUpper / population.Count);
+        float avgLower = (float)(sumLower / population.Count);
+
+        if (upperAvgText != null) upperAvgText.text = $"Upper Heuristic Avg: {avgUpper:F3}";
+        if (lowerAvgText != null) lowerAvgText.text = $"Lower Heuristic Avg: {avgLower:F3}";
+
+        // history
+        upperHistory.Add(avgUpper);
+        lowerHistory.Add(avgLower);
+
+        // refresh plots
+        if (upperGraph != null)
+        {
+            upperGraph.seriesA = upperHistory;
+            upperGraph.SetVerticesDirty();
+        }
+        if (lowerGraph != null)
+        {
+            lowerGraph.seriesB = lowerHistory;
+            lowerGraph.SetVerticesDirty();
+        }
+    }
+
 
     private void Update()
     {
@@ -59,11 +110,15 @@ public class GeneticAlgorithm : MonoBehaviour
             // 1) Read fitness from Traits
             EvaluateFitnessFromWorld();
 
+            // LOG BEST of CURRENT generation (before NextGeneration resets fitness)
+            Individual bestOld = GetBest(population);
+            Debug.Log($"Generation {generation} | best fitness: {bestOld.fitness:F3}");
+
             // 2) Build next generation
             population = NextGeneration(population);
-
             generation++;
-            Debug.Log($"Generation {generation} | best fitness: {GetBest(population).fitness:F3}");
+
+            UpdateHeuristicAveragesUI();
 
             // 3) Reset world
             DestroySpawned();
@@ -76,6 +131,7 @@ public class GeneticAlgorithm : MonoBehaviour
         }
 
     }
+
 
     // ----------------------------
     // Init / Spawn / Destroy
@@ -294,7 +350,7 @@ public class GeneticAlgorithm : MonoBehaviour
     private float ClampGene(int index, float value)
     {
         // heuristic gene is [-1..1], others [0..1]
-        if (index == 5)
+        if (index == 5 || index == 6)
         {
             return Mathf.Clamp(value, -1f, 1f);
         }
