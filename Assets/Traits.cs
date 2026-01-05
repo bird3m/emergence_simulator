@@ -136,16 +136,15 @@ public class Traits : MonoBehaviour
 
     public float GetBaselineEnergyDrain()
     {
-        const float minDrain = 0.2f;
-        const float maxExtra = 0.4f;
+        const float minDrain = 1f;
+        const float maxExtra = 2f;
         return minDrain + maxExtra * metabolic_rate;
     }
 
     public float GetMoveEnergyCostPerUnit(float effectiveMass, float speed)
     {
         const float eps = 1e-4f;
-        //float cost = (0.30f + 0.70f * effectiveMass) / (0.35f + speed + eps);
-        float cost = 0.5f;
+        float cost = (0.30f + 0.70f * effectiveMass) / (0.35f + speed + eps);
         return Mathf.Clamp(cost, 0.1f, 3.0f);
     }
 
