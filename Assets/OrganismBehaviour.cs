@@ -10,6 +10,14 @@ public class OrganismBehaviour : MonoBehaviour
     public float speed = 5f;
     public float wanderRadius = 8f;
 
+  [Header("Energy vs Slope")]
+    public float uphillExtra = 1.5f;        
+    public float downhillDiscount = 0.5f;  
+    public float maxAbsSlopeForNorm = 1.0f; 
+    public float minEnergyMultiplier = 0.1f; 
+  
+
+
    
 
     public bool repathIfTargetMoved = true;
@@ -47,6 +55,7 @@ public class OrganismBehaviour : MonoBehaviour
 
         InitializeGrid();
         SetRandomWanderTarget();
+
     }
 
     private void Update()
@@ -105,8 +114,28 @@ public class OrganismBehaviour : MonoBehaviour
             }
         }
 
-        float movedDistance = Vector2.Distance((Vector2)transform.position, beforeMove);
-        traits.UpdateVitals(movedDistance, Time.deltaTime);
+      float movedDistance = Vector2.Distance((Vector2)transform.position, beforeMove);
+
+      float slope = CurrentCellSlope(); // + uphill, - downhill
+      float slope01 = Mathf.Clamp01(Mathf.Abs(slope) / Mathf.Max(0.0001f, maxAbsSlopeForNorm));
+
+
+        float mult = 1f;
+        if (slope > 0f)
+        {
+            mult = 1f + slope01 * uphillExtra; // uphill: daha çok yak
+        }
+        else if (slope < 0f)
+        {
+            mult = 1f - slope01 * downhillDiscount; // downhill: daha az yak
+        }
+
+        mult = Mathf.Max(minEnergyMultiplier, mult);
+
+        float effort = movedDistance * mult;
+        traits.UpdateVitals(effort, Time.deltaTime);
+
+    
     }
 
     // ---------------- GRID SETUP ----------------
@@ -191,12 +220,12 @@ public class OrganismBehaviour : MonoBehaviour
 
             // use slope at node as a cheap proxy for what's ahead
             float s = terrain.GetSlope(nx, ny);
-            float t = NormalizedAbsSlope(s);
+            float x = NormalizedAbsSlope(s);
             float bias = SlopeBiasFactor(s);
 
             // If on uphill cell and organism has good bias, h becomes larger (more conservative)
             // If organism is wrong, h is too optimistic/pessimistic and A* chooses worse routes.
-            float h = dist * 10f * (1f + ( (s > 0f) ? (0.8f * t) : (0.2f * t) )) * (1f + bias);
+            float h = dist * 10f * (1f + ( (s > 0f) ? (0.8f * x) : (0.2f * x) )) * (1f + bias);
 
             h = Mathf.Clamp(h, 1f, 100000f);
             heuristic[n] = (uint)Mathf.RoundToInt(h);
@@ -250,6 +279,18 @@ public class OrganismBehaviour : MonoBehaviour
     }
 
     // ---------------- HELPERS ----------------
+
+    private float CurrentCellSlope()
+    {
+        PathfindingAstar.GraphNode n = FindClosestNode((Vector2)transform.position);
+        if (n == null) return 0f;
+
+        string[] p = n.name.Split(',');
+        int x = int.Parse(p[0]);
+        int y = int.Parse(p[1]);
+
+        return terrain.GetSlope(x, y);
+    }
 
     private PathfindingAstar.GraphNode FindClosestNode(Vector2 pos)
     {
