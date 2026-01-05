@@ -46,6 +46,81 @@ public class PathfindingAstar : MonoBehaviour
         public List<GraphNode> path; // start -> goal
     }
 
+    public static AStarResult SolveAstar(
+    GraphNode start,
+    GraphNode goal,
+    Func<GraphNode, uint> heuristicFunc)
+    {
+        AStarResult result = new AStarResult();
+        result.found = false;
+        result.totalCost = 0;
+        result.path = new List<GraphNode>();
+
+        if (start == null || goal == null) return result;
+        if (heuristicFunc == null) throw new Exception("heuristicFunc is null.");
+
+        MinHeap<TreeNode> open = new MinHeap<TreeNode>(new CompareNode_Astar());
+        HashSet<GraphNode> closed = new HashSet<GraphNode>();
+        Dictionary<GraphNode, GraphNode> cameFrom = new Dictionary<GraphNode, GraphNode>();
+        Dictionary<GraphNode, uint> gScore = new Dictionary<GraphNode, uint>();
+
+        gScore[start] = 0;
+
+        TreeNode root = new TreeNode();
+        root.node = start;
+        root.gCost = 0;
+        root.hCost = heuristicFunc(start);
+        open.Push(root);
+
+        while (!open.Empty())
+        {
+            TreeNode currentTN = open.ExtractTop();
+            GraphNode current = currentTN.node;
+
+            if (closed.Contains(current))
+                continue;
+
+            if (current == goal)
+            {
+                result.found = true;
+                result.totalCost = gScore[current];
+                result.path = ReconstructPath(cameFrom, current);
+                return result;
+            }
+
+            closed.Add(current);
+
+            for (int i = 0; i < current.links.Count; i++)
+            {
+                Link l = current.links[i];
+                GraphNode neighbor = l.node;
+
+                if (neighbor == null) continue;
+                if (closed.Contains(neighbor)) continue;
+
+                uint tentativeG = gScore[current] + l.cost;
+
+                bool better = !gScore.ContainsKey(neighbor) || tentativeG < gScore[neighbor];
+                if (better)
+                {
+                    cameFrom[neighbor] = current;
+                    gScore[neighbor] = tentativeG;
+
+                    TreeNode tn = new TreeNode();
+                    tn.node = neighbor;
+                    tn.gCost = tentativeG;
+                    tn.hCost = heuristicFunc(neighbor);
+
+                    open.Push(tn);
+                }
+            }
+        }
+
+        return result;
+    }
+
+
+
     // -------------------- Comparator (C++ style) --------------------
 
     public class CompareNode_Astar : IComparer<TreeNode>
