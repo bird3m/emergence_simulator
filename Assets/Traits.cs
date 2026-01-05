@@ -340,7 +340,14 @@ public class Traits : MonoBehaviour
         // Resource için besin değerini ayarla (örneğin: organizmanın mevcut enerjisi + fazla bir miktar)
         resource.nutrition = currentEnergy * 0.5f + 5f;
 
-
+        if (SourceManager.I != null)
+            SourceManager.I.Register(GetComponent<resource>());
+    }
+    
+    private void OnDisable()
+    {
+        if (SourceManager.I != null)
+            SourceManager.I.Unregister(GetComponent<resource>());
     }
 
 }

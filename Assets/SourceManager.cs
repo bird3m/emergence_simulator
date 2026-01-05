@@ -22,6 +22,6 @@ public class SourceManager : MonoBehaviour
     public void Unregister(resource r)
     {
         if (r == null) return;
-        sources.Remove(r);
+        if (sources.Contains(r)) sources.Remove(r);
     }
 }
