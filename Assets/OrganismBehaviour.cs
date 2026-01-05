@@ -309,4 +309,56 @@ public class OrganismBehaviour : MonoBehaviour
             SetRandomWanderTarget();
         }
     }
+
+    //---Slop Calculation
+
+    private void ParseNodeXY(PathfindingAstar.GraphNode node, out int x, out int y)
+    {
+        string[] parts = node.name.Split(',');
+        x = int.Parse(parts[0]);
+        y = int.Parse(parts[1]);
+    }
+
+    private float NormalizedAbsSlope(float s)
+    {
+        // s is in [-maxAbsSlope, +maxAbsSlope]
+        return Mathf.Clamp01(Mathf.Abs(s) / Mathf.Max(terrain.maxAbsSlope, 1e-4f));
+    }
+
+    /// <summary>
+    /// Returns signed bias multiplier from traits depending on slope sign.
+    /// uphill -> use upperSlopeHeuristic
+    /// downhill -> use lowerSlopeHeuristic
+    /// Then scale by maxHeuristicBias (e.g. 0.10 => +-10%).
+    /// </summary>
+    private float SlopeBiasFactor(float slope)
+    {
+        float gene = (slope >= 0f) ? traits.upperSlopeHeuristic : traits.lowerSlopeHeuristic;
+        // gene in [-1,1], scale to [-maxHeuristicBias, +maxHeuristicBias]
+        return gene * traits.maxHeuristicBias;
+    }
+
+    /// <summary>
+    /// Perceived step cost in "A* units".
+    /// Must return >= 1 so cost is never zero.
+    /// </summary>
+    private uint PerceivedStepCost(int toX, int toY)
+    {
+        float s = terrain.GetSlope(toX, toY);              // true slope for that cell
+        float t = NormalizedAbsSlope(s);                  // 0..1
+        float bias = SlopeBiasFactor(s);                  // e.g. -0.10..+0.10
+
+        // Base cost: 10 per step (so we have resolution as uint)
+        // Extra penalty: uphill costs more than downhill (tuned by sign)
+        float uphillExtra = (s > 0f) ? (1.0f + 2.0f * t) : (1.0f + 0.5f * t);
+
+        // Apply organism's evolved bias: if it "knows hills are costly", bias>0 increases costs on hills
+        // If it underestimates, bias<0 decreases perceived cost and it may choose bad routes.
+        float perceived = 10f * uphillExtra * (1f + bias);
+
+        // clamp and convert to uint
+        perceived = Mathf.Clamp(perceived, 1f, 100000f);
+        return (uint)Mathf.RoundToInt(perceived);
+    }
+
 }
