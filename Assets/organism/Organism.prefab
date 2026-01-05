@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 6648331120985767156}
   - component: {fileID: 7683240624622440650}
   - component: {fileID: 3803771037933458176}
+  - component: {fileID: 7737531533977272853}
   m_Layer: 0
   m_Name: Organism
   m_TagString: Untagged
@@ -104,3 +105,38 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bc66e8c1f741e664a8a450425dc6d0da, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
+--- !u!114 &7737531533977272853
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1327708465454452514}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 606cd4ab4fcf7b74aa9462ae06e520c6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Traits
+  maxHealth: 0
+  currentHealth: 0
+  mass: 0
+  muscle_mass: 0
+  metabolic_rate: 0
+  agression: 0
+  risk_aversion: 0
+  heuristic: 0
+  danger_weight: 0
+  camouflage: 0
+  can_fly: 0
+  can_herd: 0
+  is_scavenging: 0
+  is_carnivore: 0
+  can_camouflage: 0
+  chromosm: []
+  EffectiveMass: 0
+  PowerToWeight: 0
+  Speed: 0
+  BaselineEnergyDrain: 0
+  MoveEnergyCostPerUnit: 0
+  Boldness: 0
+  maxHeuristicBias: 0.1
