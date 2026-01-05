@@ -45,7 +45,7 @@ public class Traits : MonoBehaviour
     public float Boldness;
 
     // optional: heuristic bias scale (heuristic gene is [-1,1])
-    public float maxHeuristicBias = 0.10f; // +-0.10 as you described
+    public float maxHeuristicBias = 0.30f; // +-0.10 as you described
 
     public float maxEnergy;
     public float currentEnergy;

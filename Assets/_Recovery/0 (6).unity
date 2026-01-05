@@ -832,7 +832,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GeneticAlgorithm
   organismPrefab: {fileID: 1327708465454452514, guid: b6e2f98ed376ee740909d269ec1ac864, type: 3}
   spawnPoints: []
+<<<<<<< HEAD
   populationSize: 10
+=======
+  populationSize: 100
+>>>>>>> 677df96c71c791b5250017cc821f02d5b2c90073
   eliteCount: 4
   crossoverRate: 0.9
   mutationRate: 0.08
@@ -1183,8 +1187,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8b1359e1e9eb3f94e876843df921c4c5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RandomSlopeTerrain2D
+<<<<<<< HEAD
   width: 100
   height: 100
+=======
+  width: 1000
+  height: 1000
+>>>>>>> 677df96c71c791b5250017cc821f02d5b2c90073
   cellSize: 1
   maxAbsSlope: 1
   useSeed: 1

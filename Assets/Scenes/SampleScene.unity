@@ -415,6 +415,7 @@ GameObject:
   m_Component:
   - component: {fileID: 568344366}
   - component: {fileID: 568344365}
+  - component: {fileID: 568344367}
   m_Layer: 0
   m_Name: SourceSpawner
   m_TagString: Untagged
@@ -458,6 +459,18 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &568344367
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 568344364}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 517b6b3c661da4c4ea78d1fbc9143cf3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: '::'
 --- !u!1 &619394800
 GameObject:
   m_ObjectHideFlags: 0
@@ -832,7 +845,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GeneticAlgorithm
   organismPrefab: {fileID: 1327708465454452514, guid: b6e2f98ed376ee740909d269ec1ac864, type: 3}
   spawnPoints: []
-  populationSize: 10
+  populationSize: 20
   eliteCount: 4
   crossoverRate: 0.9
   mutationRate: 0.08
@@ -842,6 +855,7 @@ MonoBehaviour:
   lowerAvgText: {fileID: 1119045634}
   upperGraph: {fileID: 964052825}
   lowerGraph: {fileID: 1386671343}
+  spawner: {fileID: 568344365}
 --- !u!4 &1038267132
 Transform:
   m_ObjectHideFlags: 0
@@ -1165,7 +1179,7 @@ Transform:
   m_GameObject: {fileID: 1512186855}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.5, y: -0.5, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1183,8 +1197,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8b1359e1e9eb3f94e876843df921c4c5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RandomSlopeTerrain2D
-  width: 100
-  height: 100
+  width: 200
+  height: 200
   cellSize: 1
   maxAbsSlope: 1
   useSeed: 1
@@ -1192,6 +1206,7 @@ MonoBehaviour:
   drawGizmos: 1
   arrowLength: 0.35
   arrowHeadSize: 0.12
+  originWorld: {x: 0, y: 0, z: 0}
 --- !u!1 &1847470822
 GameObject:
   m_ObjectHideFlags: 0
