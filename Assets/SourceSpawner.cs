@@ -1,179 +1,118 @@
 using UnityEngine;
 using System.Collections.Generic;
-using System;
 
-
-// IMPORTANT:
-// If your own script is named/classed "Terrain", it conflicts with UnityEngine.Terrain.
-// This script avoids that by fully qualifying UnityEngine.Terrain ONLY if needed.
-// Your custom Terrain class must have: width, height, cellSize, maxAbsSlope, GetSlope(x,y), CellCenterWorld(x,y)
-
-public class SourceSpawner2D : MonoBehaviour
+public class SourceSpawner : MonoBehaviour
 {
-    [Header("References")]
-    public Terrain terrain;              // your custom Terrain script (grid terrain)
-    public GameObject sourcePrefab;      // your source prefab
+    [Header("Spawn Settings")]
+    public GameObject sourcePrefab;
+    public global::Terrain terrain;
 
-    [Header("Density")]
-    [Range(0f, 1f)]
-    public float density = 0.08f;        // base probability per cell
+    public float respawnDelay = 8f;
+    public int maxTries = 200;
 
-    [Header("Clustering (optional)")]
-    public bool useNoise = true;
-    public float noiseScale = 0.12f;     // smaller => bigger blobs, larger => more speckle
-    [Range(0f, 1f)]
-    public float noiseBlend = 0.75f;     // 0=ignore noise, 1=all noise
+    [Header("Initial Spawn")]
+    public bool spawnOnStart = true;
+    public int initialCount = 50;
 
-    [Header("Slope Bias (optional)")]
-    [Range(-1f, 1f)]
-    public float preferPitsOrPeaks = 0f; // -1 pits, +1 peaks, 0 ignore slope
-    [Range(0f, 2f)]
-    public float slopeInfluence = 0f;    // 0 ignore, 1 moderate, 2 strong
+    [Header("Collision")]
+    public LayerMask sourceLayerMask; // only sources
 
-    [Header("Spawn Limits")]
-    [Tooltip("0 = unlimited")]
-    public int maxSpawn = 0;
+    private struct Pending
+    {
+        public float time;
+        public float nutrition;
+    }
 
-    [Header("Determinism")]
-    public bool deterministic = true;
-    public int seed = 12345;
+    private readonly List<Pending> pending = new List<Pending>();
 
-    [Header("Housekeeping")]
-    public bool clearPreviousOnSpawn = true;
+    private void Awake()
+    {
+        if (terrain == null)
+            terrain = FindObjectOfType<global::Terrain>();
+
+        if (sourcePrefab == null)
+            Debug.LogError("ResourceRespawnManager: sourcePrefab is not set!");
+    }
 
     private void Start()
     {
-        SpawnAll();
+        if (!spawnOnStart) return;
+
+        for (int i = 0; i < initialCount; i++)
+        {
+            SpawnOne(Random.Range(5f, 15f)); // nutrition örnek
+        }
     }
 
-    [ContextMenu("Spawn All")]
-    public void SpawnAll()
+    private void Update()
     {
-        if (terrain == null)
-            terrain = FindObjectOfType<Terrain>();
+        if (pending.Count == 0) return;
 
-        if (terrain == null)
+        float now = Time.time;
+
+        for (int i = pending.Count - 1; i >= 0; i--)
         {
-            Debug.LogError("SourceSpawner2D: terrain is null.");
-            return;
-        }
-
-        if (sourcePrefab == null)
-        {
-            Debug.LogError("SourceSpawner2D: sourcePrefab is null.");
-            return;
-        }
-
-        if (clearPreviousOnSpawn)
-            ClearSpawned();
-
-        int limit = (maxSpawn <= 0) ? int.MaxValue : maxSpawn;
-
-        // Build a list of ALL cells
-        List<Vector2Int> cells = new List<Vector2Int>(terrain.width * terrain.height);
-        for (int x = 0; x < terrain.width; x++)
-        {
-            for (int y = 0; y < terrain.height; y++)
+            if (now >= pending[i].time)
             {
-                cells.Add(new Vector2Int(x, y));
+                SpawnOne(pending[i].nutrition);
+                pending.RemoveAt(i);
             }
         }
-
-        // Shuffle cells so spawning is evenly distributed across the whole terrain
-        Shuffle(cells, deterministic ? seed : Environment.TickCount);
-
-        int spawned = 0;
-
-        for (int i = 0; i < cells.Count; i++)
-        {
-            if (spawned >= limit)
-                break;
-
-            int x = cells[i].x;
-            int y = cells[i].y;
-
-            float p = ProbabilityAtCell(x, y);
-
-            // roll
-            float r = deterministic ? CellRandom01(x, y, seed) : UnityEngine.Random.value;
-
-            if (r <= p)
-            {
-                Vector3 pos = terrain.CellCenterWorld(x, y);
-                Instantiate(sourcePrefab, pos, Quaternion.identity, transform);
-                spawned++;
-            }
-        }
-
-        Debug.Log("Spawned: " + spawned + " / limit: " + (maxSpawn <= 0 ? "unlimited" : maxSpawn.ToString()));
     }
 
-    private void Shuffle(List<Vector2Int> list, int s)
+    public void ScheduleRespawn(float nutrition)
     {
-        // Fisher-Yates shuffle
-        System.Random rng = new System.Random(s);
-
-        for (int i = list.Count - 1; i > 0; i--)
-        {
-            int j = rng.Next(i + 1);
-            Vector2Int tmp = list[i];
-            list[i] = list[j];
-            list[j] = tmp;
-        }
+        Pending p;
+        p.time = Time.time + respawnDelay;
+        p.nutrition = nutrition;
+        pending.Add(p);
     }
 
-
-    [ContextMenu("Clear Spawned")]
-    public void ClearSpawned()
+    private void SpawnOne(float nutrition)
     {
-        for (int i = transform.childCount - 1; i >= 0; i--)
-        {
-            Destroy(transform.GetChild(i).gameObject);
-        }
+        if (sourcePrefab == null || terrain == null) 
+            return;
+
+        Vector3 pos;
+        if (!TryGetRandomCellCenter(out pos))
+            return;
+
+        pos.z = 0f; 
+
+        GameObject go = Instantiate(sourcePrefab, pos, Quaternion.identity);
+
+        var r = go.GetComponent<resource>();
+        if (r != null)
+            r.nutrition = nutrition;
+
+        Debug.Log($"[SOURCE SPAWNED] time={Time.time:F1} pos={pos} nutrition={nutrition}");
+
     }
 
-    private float ProbabilityAtCell(int x, int y)
+    private bool TryGetRandomCellCenter(out Vector3 worldPos)
     {
-        float p = density;
+        worldPos = Vector3.zero;
 
-        // 1) Noise: blend instead of multiply-to-zero
-        if (useNoise)
+        int w = terrain.width;
+        int h = terrain.height;
+
+        for (int i = 0; i < maxTries; i++)
         {
-            float n = Mathf.PerlinNoise(x * noiseScale, y * noiseScale); // 0..1
-            float noiseFactor = Mathf.Lerp(1f, n, noiseBlend);           // 1..n
-            p *= noiseFactor;
+            int x = Random.Range(0, w);
+            int y = Random.Range(0, h);
+
+            worldPos = terrain.CellCenterWorld(x, y);
+
+            Collider2D hit = Physics2D.OverlapCircle(
+                new Vector2(worldPos.x, worldPos.y),
+                terrain.cellSize * 0.35f,
+                sourceLayerMask
+            );
+
+            if (hit == null)
+                return true;
         }
 
-        // 2) Slope bias (optional)
-        if (slopeInfluence > 0.0001f && Mathf.Abs(preferPitsOrPeaks) > 0.0001f)
-        {
-            float s = terrain.GetSlope(x, y);
-            float maxAbs = Mathf.Max(terrain.maxAbsSlope, 0.0001f);
-            float sn = Mathf.Clamp(s / maxAbs, -1f, 1f);                 // -1..+1
-
-            // Alignment: + when slope matches preference
-            float alignment = sn * preferPitsOrPeaks;                    // -1..+1
-            float mult = 1f + alignment * slopeInfluence;                // can go below 0
-
-            if (mult < 0f) mult = 0f;
-            p *= mult;
-        }
-
-        return Mathf.Clamp01(p);
-    }
-
-    // Deterministic pseudo-random in [0,1) per cell
-    private float CellRandom01(int x, int y, int s)
-    {
-        // Simple integer hash (fast, stable)
-        int h = s;
-        h = h ^ (x * 374761393);
-        h = h ^ (y * 668265263);
-        h = (h ^ (h >> 13)) * 1274126177;
-        h = h ^ (h >> 16);
-
-        // Convert to 0..1
-        uint uh = (uint)h;
-        return (uh & 0x00FFFFFF) / 16777216f;
+        return false;
     }
 }
