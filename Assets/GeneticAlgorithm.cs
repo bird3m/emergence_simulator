@@ -20,7 +20,7 @@ public class GeneticAlgorithm : MonoBehaviour
     public int eliteCount = 4;
     public float crossoverRate = 0.90f;
     public float mutationRate = 0.08f;
-    public float mutationStep = 0.10f;
+    public float mutationStep = 0.5f;
 
     [Header("Evaluation")]
     public float evaluationSeconds = 20f;
@@ -44,6 +44,7 @@ public class GeneticAlgorithm : MonoBehaviour
     private List<float> upperHistory = new List<float>();
     private List<float> lowerHistory = new List<float>();
     public SourceSpawner spawner;
+    public float alpha = 0.5f; // Blend factor for BLX-α Crossover
 
     private void Start()
     {
@@ -265,7 +266,7 @@ public class GeneticAlgorithm : MonoBehaviour
 
             if (Rand01() < crossoverRate)
             {
-                child = UniformCrossover(p1.chrom, p2.chrom);
+                child = BLXCrossover(p1.chrom, p2.chrom, alpha);  // Use BLX-α Crossover
             }
 
             Mutate(child);
@@ -297,30 +298,43 @@ public class GeneticAlgorithm : MonoBehaviour
         return best;
     }
 
-    private float[] UniformCrossover(float[] a, float[] b)
+    private float[] BLXCrossover(float[] parent1, float[] parent2, float alpha = 0.3f)
     {
-        float[] child = new float[a.Length];
+        float[] child = new float[parent1.Length];
 
-        for (int i = 0; i < a.Length; i++)
+        for (int i = 0; i < parent1.Length; i++)
         {
-            child[i] = (Rand01() < 0.5f) ? a[i] : b[i];
+            float lower = Mathf.Min(parent1[i], parent2[i]);
+            float upper = Mathf.Max(parent1[i], parent2[i]);
+
+            // Blend gene within the bounds with random factor, ensuring it's within [-1, 1]
+            child[i] = lower + alpha * (upper - lower) * UnityEngine.Random.Range(0f, 1f);
+
+            // Ensure the heuristic stays within bounds [-1, 1]
+            child[i] = Mathf.Clamp(child[i], -1f, 1f);
         }
 
         return child;
     }
 
-    private void Mutate(float[] chrom)
+
+
+    private void Mutate(float[] chrom, float mutationRate = 0.08f, float mutationStep = 0.05f)
     {
         for (int i = 0; i < chrom.Length; i++)
         {
             if (Rand01() < mutationRate)
             {
+                // Apply a small random mutation step
                 float delta = UnityEngine.Random.Range(-mutationStep, mutationStep);
                 chrom[i] += delta;
-                chrom[i] = ClampGene(i, chrom[i]);
+
+                // Clamp the value within the valid range for each gene
+                chrom[i] = Mathf.Clamp(chrom[i], -1f, 1f); // Ensure heuristics stay within [-1, 1]
             }
         }
     }
+
 
     // ----------------------------
     // Chromosome helpers

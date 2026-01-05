@@ -11,6 +11,7 @@ public class SourceManager : MonoBehaviour
     private void Awake()
     {
         I = this;
+        Time.timeScale = 25f;
     }
 
     public void Register(resource r)
