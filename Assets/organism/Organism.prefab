@@ -347,7 +347,8 @@ MonoBehaviour:
   metabolic_rate: 0
   agression: 0
   risk_aversion: 0
-  heuristic: 0
+  upperSlopeHeuristic: 0
+  lowerSlopeHeuristic: 0
   danger_weight: 0
   camouflage: 0
   can_fly: 0
@@ -355,14 +356,23 @@ MonoBehaviour:
   is_scavenging: 0
   is_carnivore: 0
   can_camouflage: 0
-  chromosm: []
+  chromosm:
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - -1
+  - 1
+  - 0
+  - 0
   EffectiveMass: 0
   PowerToWeight: 0
   Speed: 0
   BaselineEnergyDrain: 0
   MoveEnergyCostPerUnit: 0
   Boldness: 0
-  maxHeuristicBias: 0.1
+  maxHeuristicBias: 0.4
   maxEnergy: 0
   currentEnergy: 0
 --- !u!114 &3788187831198522187
@@ -384,6 +394,7 @@ MonoBehaviour:
   repathIfTargetMoved: 1
   repathMoveThreshold: 1
   lastPath: []
+  traits: {fileID: 7737531533977272853}
 --- !u!114 &3090274887604956481
 MonoBehaviour:
   m_ObjectHideFlags: 0

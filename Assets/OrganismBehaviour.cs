@@ -29,7 +29,7 @@ public class OrganismBehaviour : MonoBehaviour
     // Target lock
     private GameObject currentTarget = null;
     private Vector2 lastPlannedTargetPos;
-    Traits traits;
+    public Traits traits;
     private Vector2 lastPos;
 
 
@@ -47,7 +47,6 @@ public class OrganismBehaviour : MonoBehaviour
 
         InitializeGrid();
         SetRandomWanderTarget();
-        traits = GetComponent<Traits>();
     }
 
     private void Update()
