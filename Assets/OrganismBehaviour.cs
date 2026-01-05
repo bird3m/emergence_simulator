@@ -7,7 +7,7 @@ public class OrganismBehaviour : MonoBehaviour
    
     public float border = 10f;
     public float reachTolerance = 0.5f;
-    public float speed = 5.0f;
+    public float speed = 0.0f;
     public float wanderRadius = 8f;
 
   [Header("Energy vs Slope")]
@@ -86,7 +86,6 @@ public class OrganismBehaviour : MonoBehaviour
             traits = GetComponent<Traits>();
 
         speed = traits.GetSpeed(traits.PowerToWeight);
-        Debug.Log(speed);
 
         float j = UnityEngine.Random.Range(0f, thinkJitter);
         nextRepathTime = Time.time + j;
