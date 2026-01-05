@@ -128,8 +128,8 @@ public class Traits : MonoBehaviour
 
     public float GetBaselineEnergyDrain()
     {
-        const float minDrain = 0.2f;
-        const float maxExtra = 0.25f;
+        const float minDrain = 0.1f;
+        const float maxExtra = 0.2f;
         return minDrain + maxExtra * metabolic_rate;
     }
 
@@ -250,7 +250,7 @@ public class Traits : MonoBehaviour
 
     public void UpdateVitals(float movementDistance, float deltaTime)
     {
-        const float STARVATION_DAMAGE_SCALE = 15f; // tune
+        const float STARVATION_DAMAGE_SCALE = 0.15f; // tune
         const float HEALTH_REGEN_PER_SEC = 2f;     // optional, can set 0 if you want none
         const float REGEN_ENERGY_THRESHOLD = 0.7f; // must have >=70% energy to regen
 
@@ -278,6 +278,9 @@ public class Traits : MonoBehaviour
 
         currentHealth = Mathf.Clamp(currentHealth, 0f, maxHealth);
         currentEnergy = Mathf.Clamp(currentEnergy, 0f, maxEnergy);
+
+        if(IsDead())
+            Destroy(gameObject);
     }
 
 

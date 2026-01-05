@@ -355,18 +355,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ff78f98621051b746940019ef86c0d4b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SourceSpawner
-  terrain: {fileID: 1512186857}
   sourcePrefab: {fileID: 242896139255199108, guid: bf876e7ac42bfb04d8a2ec0ea4b45cae, type: 3}
-  density: 0.08
-  useNoise: 1
-  noiseScale: 0.12
-  noiseBlend: 0.75
-  preferPitsOrPeaks: -0.3
-  slopeInfluence: 0.8
-  maxSpawn: 200
-  deterministic: 1
-  seed: 999
-  clearPreviousOnSpawn: 1
+  terrain: {fileID: 1512186857}
+  respawnDelay: 8
+  maxTries: 200
+  spawnOnStart: 1
+  initialCount: 50
+  sourceLayerMask:
+    serializedVersion: 2
+    m_Bits: 0
 --- !u!4 &568344366
 Transform:
   m_ObjectHideFlags: 0
@@ -551,7 +548,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GeneticAlgorithm
   organismPrefab: {fileID: 1327708465454452514, guid: b6e2f98ed376ee740909d269ec1ac864, type: 3}
   spawnPoints: []
-  populationSize: 30
+  populationSize: 10
   eliteCount: 4
   crossoverRate: 0.9
   mutationRate: 0.08

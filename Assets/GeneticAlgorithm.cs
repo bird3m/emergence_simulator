@@ -31,8 +31,19 @@ public class GeneticAlgorithm : MonoBehaviour
     private int generation = 0;
     private System.Random rng = new System.Random();
 
+    private global::Terrain terrain;
+
+
     private void Start()
     {
+       terrain = FindObjectOfType<global::Terrain>();
+        if (terrain == null)
+        {
+            Debug.LogError("Terrain not found!");
+            enabled = false;
+            return;
+        }
+
         InitPopulation();
         SpawnPopulation();
     }
@@ -105,16 +116,24 @@ public class GeneticAlgorithm : MonoBehaviour
 
     private Vector3 GetSpawnPos(int i)
     {
+        // If you still want to support manual spawn points, keep this block
         if (spawnPoints != null && spawnPoints.Length > 0)
         {
             return spawnPoints[i % spawnPoints.Length].position;
         }
 
-        // fallback grid spawn
-        float x = (i % 10) * 1.5f;
-        float z = (i / 10) * 1.5f;
-        return new Vector3(x, 0f, z);
+        // Terrain-bounded random cell spawn
+        int x = UnityEngine.Random.Range(0, terrain.width);
+        int y = UnityEngine.Random.Range(0, terrain.height);
+
+        Vector3 p = terrain.CellCenterWorld(x, y);
+
+        // IMPORTANT: If your sim is 2D birdview on XY, use (x,y)
+        // If it is top-down on XZ, keep y as z.
+        // Most likely you want XZ:
+        return new Vector3(p.x, p.y, p.z);
     }
+
 
     private void DestroySpawned()
     {
