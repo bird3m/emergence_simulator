@@ -43,6 +43,7 @@ public class GeneticAlgorithm : MonoBehaviour
 
     private List<float> upperHistory = new List<float>();
     private List<float> lowerHistory = new List<float>();
+    public SourceSpawner spawner;
 
     private void Start()
     {
@@ -158,6 +159,7 @@ public class GeneticAlgorithm : MonoBehaviour
         {
             Vector3 pos = GetSpawnPos(i);
             GameObject go = Instantiate(organismPrefab, pos, Quaternion.identity);
+            go.GetComponent<OrganismBehaviour>().spawner = spawner;
             spawned.Add(go);
 
             Traits t = go.GetComponent<Traits>();

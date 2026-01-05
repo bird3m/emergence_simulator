@@ -93,6 +93,23 @@ public class Terrain : MonoBehaviour
         float wy = origin.y + (y + 0.5f) * cellSize;
         return new Vector3(wx, wy, origin.z);
     }
+    public Vector3 originWorld = Vector3.zero; // grid 0,0'ın world origin'i
+
+    public bool WorldToCell(Vector2 world, out int x, out int y)
+    {
+        // Birdview XY: x->world.x, y->world.y
+        float lx = world.x - originWorld.x;
+        float ly = world.y - originWorld.y;
+
+        x = Mathf.FloorToInt(lx / cellSize);
+        y = Mathf.FloorToInt(ly / cellSize);
+
+        // clamp / bounds check
+        if (x < 0 || x >= width || y < 0 || y >= height)
+            return false;
+
+        return true;
+    }
 
     private void OnDrawGizmos()
     {

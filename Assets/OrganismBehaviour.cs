@@ -15,18 +15,18 @@ public class OrganismBehaviour : MonoBehaviour
     public float downhillDiscount = 0.5f;  
     public float maxAbsSlopeForNorm = 1.0f; 
     public float minEnergyMultiplier = 0.1f; 
-  
 
-
-   
+    public SourceSpawner spawner;
 
     public bool repathIfTargetMoved = true;
     public float repathMoveThreshold = 1.0f;
 
     private global::Terrain terrain;
 
-    private List<PathfindingAstar.GraphNode> allNodes = new List<PathfindingAstar.GraphNode>();
-    private Dictionary<string, PathfindingAstar.GraphNode> nodeByName = new Dictionary<string, PathfindingAstar.GraphNode>();
+    private static List<PathfindingAstar.GraphNode> allNodes;
+    private static Dictionary<string, PathfindingAstar.GraphNode> nodeByName;
+    private static bool graphBuilt = false;
+
 
     public List<PathfindingAstar.GraphNode> lastPath = new List<PathfindingAstar.GraphNode>();
 
@@ -49,6 +49,9 @@ public class OrganismBehaviour : MonoBehaviour
     private float accumulatedRealEffort = 0f;
 
 
+    public float targetSearchInterval = 0.25f;
+    private float nextSearchTime = 0f;
+
     private void Start()
     {
         lastPos = transform.position;
@@ -61,11 +64,54 @@ public class OrganismBehaviour : MonoBehaviour
             return;
         }
 
-        InitializeGrid();
+        // build graph ONCE
+        if (!graphBuilt)
+        {
+            BuildSharedGraph();
+            graphBuilt = true;
+        }
+
         SetRandomWanderTarget();
-        lastCellNode = FindClosestNode((Vector2)transform.position);
+        lastCellNode = NodeFromWorld((Vector2)transform.position);
         accumulatedRealEffort = 0f;
+
+        // traits cache (sende public ama null kalabiliyor)
+        if (traits == null) traits = GetComponent<Traits>();
     }
+
+    private void BuildSharedGraph()
+    {
+        allNodes = new List<PathfindingAstar.GraphNode>(terrain.width * terrain.height);
+        nodeByName = new Dictionary<string, PathfindingAstar.GraphNode>(terrain.width * terrain.height);
+
+        // Create nodes
+        for (int x = 0; x < terrain.width; x++)
+        {
+            for (int y = 0; y < terrain.height; y++)
+            {
+                var node = new PathfindingAstar.GraphNode(x + "," + y);
+                allNodes.Add(node);
+                nodeByName[node.name] = node;
+            }
+        }
+
+        // Connect nodes (4-neighborhood)
+        for (int i = 0; i < allNodes.Count; i++)
+        {
+            PathfindingAstar.GraphNode node = allNodes[i];
+            node.links.Clear();
+
+            string[] parts = node.name.Split(',');
+            int x = int.Parse(parts[0]);
+            int y = int.Parse(parts[1]);
+
+            AddLinkIfValid(node, x + 1, y);
+            AddLinkIfValid(node, x - 1, y);
+            AddLinkIfValid(node, x, y + 1);
+            AddLinkIfValid(node, x, y - 1);
+        }
+    }
+
 
     private void Update()
     {
@@ -75,11 +121,16 @@ public class OrganismBehaviour : MonoBehaviour
         // Acquire target ONLY if none
         if (currentTarget == null)
         {
-            currentTarget = FindClosestSourceInRange();
-            if (currentTarget != null)
+            if (Time.time >= nextSearchTime)
             {
-                CalculateAStarPath(currentTarget.transform.position);
-                lastPlannedTargetPos = currentTarget.transform.position;
+                nextSearchTime = Time.time + targetSearchInterval + UnityEngine.Random.Range(0f, 0.1f);
+
+                currentTarget = FindClosestSourceInRange();
+                if (currentTarget != null)
+                {
+                    CalculateAStarPath(currentTarget.transform.position);
+                    lastPlannedTargetPos = currentTarget.transform.position;
+                }
             }
         }
         else
@@ -150,35 +201,6 @@ public class OrganismBehaviour : MonoBehaviour
         float effort = movedDistance * mult;
         traits.UpdateVitals(effort, Time.deltaTime);
 
-        accumulatedRealEffort += effort;
-
-        PathfindingAstar.GraphNode currentCell = FindClosestNode((Vector2)transform.position);
-
-        if (currentCell != null && lastCellNode != null && currentCell != lastCellNode)
-        {
-            // We entered a new cell: compare REAL vs PERCEIVED for this step
-            ParseNodeXY(currentCell, out int cx, out int cy);
-
-            uint perceivedStepCost = PerceivedStepCost(cx, cy);
-            float realStepCost = accumulatedRealEffort;
-
-            float ratio = (perceivedStepCost > 0) ? (realStepCost / perceivedStepCost) : 0f;
-
-            if (debugCosts)
-            {
-                float s = terrain.GetSlope(cx, cy);
-              
-            }
-
-            // reset for next cell transition
-            accumulatedRealEffort = 0f;
-            lastCellNode = currentCell;
-        }
-        else if (currentCell != null && lastCellNode == null)
-        {
-            lastCellNode = currentCell;
-            accumulatedRealEffort = 0f;
-        }
 
     }
 
@@ -198,45 +220,6 @@ public class OrganismBehaviour : MonoBehaviour
         return sum;
     }
 
-    // ---------------- GRID SETUP ----------------
-
-    private void InitializeGrid()
-    {
-        allNodes.Clear();
-        nodeByName.Clear();
-
-        for (int x = 0; x < terrain.width; x++)
-        {
-            for (int y = 0; y < terrain.height; y++)
-            {
-                // IMPORTANT: your GraphNode in PathfindingAstar has a constructor GraphNode(string name)
-                var node = new PathfindingAstar.GraphNode(x + "," + y);
-
-                allNodes.Add(node);
-                nodeByName[node.name] = node;
-            }
-        }
-
-        ConnectNodes();
-    }
-
-    private void ConnectNodes()
-    {
-        for (int i = 0; i < allNodes.Count; i++)
-        {
-            PathfindingAstar.GraphNode node = allNodes[i];
-            node.links.Clear();
-
-            string[] parts = node.name.Split(',');
-            int x = int.Parse(parts[0]);
-            int y = int.Parse(parts[1]);
-
-            AddLinkIfValid(node, x + 1, y);
-            AddLinkIfValid(node, x - 1, y);
-            AddLinkIfValid(node, x, y + 1);
-            AddLinkIfValid(node, x, y - 1);
-        }
-    }
 
     private void AddLinkIfValid(PathfindingAstar.GraphNode node, int targetX, int targetY)
     {
@@ -247,8 +230,8 @@ public class OrganismBehaviour : MonoBehaviour
 
         if (nodeByName.TryGetValue(key, out PathfindingAstar.GraphNode targetNode))
         {
-            uint cost = PerceivedStepCost(targetX, targetY);
-            node.links.Add(new PathfindingAstar.Link(cost, targetNode));
+            // shared graph => cost must NOT depend on per-organism traits
+            node.links.Add(new PathfindingAstar.Link(10, targetNode));
         }
     }
 
@@ -259,8 +242,8 @@ public class OrganismBehaviour : MonoBehaviour
         pathPoints.Clear();
         pathIndex = 0;
 
-        PathfindingAstar.GraphNode startNode = FindClosestNode((Vector2)transform.position);
-        PathfindingAstar.GraphNode goalNode = FindClosestNode(destination);
+        PathfindingAstar.GraphNode startNode = NodeFromWorld((Vector2)transform.position);
+        PathfindingAstar.GraphNode goalNode  = NodeFromWorld(destination);
 
         if (startNode == null || goalNode == null)
             return;
@@ -322,6 +305,22 @@ public class OrganismBehaviour : MonoBehaviour
 
     }
 
+
+    private PathfindingAstar.GraphNode GetNodeAtWorld(Vector2 world)
+    {
+        if (!terrain.WorldToCell(world, out int x, out int y))
+            return null;
+
+        // (Şimdilik string key ile, hızlı fix)
+        string key = x + "," + y;
+
+        if (nodeByName.TryGetValue(key, out var node))
+            return node;
+
+        return null;
+    }
+
+
     private void FollowPath()
     {
         if (pathPoints.Count == 0 || pathIndex >= pathPoints.Count) return;
@@ -345,14 +344,19 @@ public class OrganismBehaviour : MonoBehaviour
 
     private float CurrentCellSlope()
     {
-        PathfindingAstar.GraphNode n = FindClosestNode((Vector2)transform.position);
-        if (n == null) return 0f;
-
-        string[] p = n.name.Split(',');
-        int x = int.Parse(p[0]);
-        int y = int.Parse(p[1]);
+        if (!terrain.WorldToCell((Vector2)transform.position, out int x, out int y))
+            return 0f;
 
         return terrain.GetSlope(x, y);
+    }
+    private PathfindingAstar.GraphNode NodeFromWorld(Vector2 world)
+    {
+        if (!terrain.WorldToCell(world, out int x, out int y))
+            return null;
+
+        string key = x + "," + y;
+        nodeByName.TryGetValue(key, out var node);
+        return node;
     }
 
     private PathfindingAstar.GraphNode FindClosestNode(Vector2 pos)

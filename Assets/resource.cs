@@ -2,5 +2,23 @@ using UnityEngine;
 
 public class resource : MonoBehaviour
 {
-   public float nutrition = 10f;
+    public float nutrition = 10f;
+
+    private void OnEnable()
+    {
+        if (SourceManager.I != null)
+            SourceManager.I.Register(this);
+    }
+
+    private void OnDisable()
+    {
+        if (SourceManager.I != null)
+            SourceManager.I.Unregister(this);
+    }
+
+    private void OnDestroy()
+    {
+        if (SourceManager.I != null)
+            SourceManager.I.Unregister(this);
+    }
 }
