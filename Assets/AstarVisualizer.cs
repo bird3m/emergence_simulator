@@ -6,12 +6,11 @@ public class AStarVisualizer : MonoBehaviour
     public OrganismBehaviour selected;
     public global::Terrain terrain;
 
-    [Header("Colors")]
-    public Color openColor = new Color(0.2f, 0.4f, 1f, 0.35f);
-    public Color closedColor = new Color(1f, 0.2f, 0.2f, 0.35f);
+    [Header("Path Visual")]
     public Color pathColor = new Color(0.2f, 1f, 0.2f, 1f);
-
     public float sizeFactor = 0.6f;
+    public bool drawLines = true;
+    public bool drawNodes = true;
 
     private void OnDrawGizmos()
     {
@@ -24,42 +23,35 @@ public class AStarVisualizer : MonoBehaviour
         if (terrain == null)
             return;
 
-        if (selected.debugData == null)
+        if (selected.lastPath == null || selected.lastPath.Count == 0)
             return;
 
-        DrawSet(selected.debugData.open, openColor, false);
-        DrawSet(selected.debugData.closed, closedColor, false);
-        DrawList(selected.debugData.finalPath, pathColor, true);
+        DrawPath(selected.lastPath);
     }
 
-    private void DrawSet(HashSet<PathfindingAstar.GraphNode> set, Color c, bool solid)
+    private void DrawPath(List<PathfindingAstar.GraphNode> path)
     {
-        Gizmos.color = c;
-        foreach (var n in set)
-        {
-            Vector3 p = NodeToWorld(n);
-            float s = terrain.cellSize * sizeFactor;
-            if (solid) Gizmos.DrawCube(p, Vector3.one * s);
-            else Gizmos.DrawWireCube(p, Vector3.one * s);
-        }
-    }
+        float s = terrain.cellSize * sizeFactor;
 
-    private void DrawList(List<PathfindingAstar.GraphNode> list, Color c, bool solid)
-    {
-        Gizmos.color = c;
-        for (int i = 0; i < list.Count; i++)
+        // Draw nodes
+        if (drawNodes)
         {
-            Vector3 p = NodeToWorld(list[i]);
-            float s = terrain.cellSize * sizeFactor;
-            if (solid) Gizmos.DrawCube(p, Vector3.one * s);
-            else Gizmos.DrawWireCube(p, Vector3.one * s);
+            Gizmos.color = pathColor;
+            for (int i = 0; i < path.Count; i++)
+            {
+                Vector3 p = NodeToWorld(path[i]);
+                Gizmos.DrawCube(p, Vector3.one * s);
+            }
         }
 
-        // Optional: draw connecting lines for the final path
-        Gizmos.color = new Color(c.r, c.g, c.b, 0.9f);
-        for (int i = 0; i + 1 < list.Count; i++)
+        // Draw connecting lines
+        if (drawLines && path.Count >= 2)
         {
-            Gizmos.DrawLine(NodeToWorld(list[i]), NodeToWorld(list[i + 1]));
+            Gizmos.color = new Color(pathColor.r, pathColor.g, pathColor.b, 0.9f);
+            for (int i = 0; i + 1 < path.Count; i++)
+            {
+                Gizmos.DrawLine(NodeToWorld(path[i]), NodeToWorld(path[i + 1]));
+            }
         }
     }
 

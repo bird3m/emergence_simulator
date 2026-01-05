@@ -4,13 +4,14 @@ using System.Collections.Generic;
 
 public class OrganismBehaviour : MonoBehaviour
 {
-    [Header("Settings")]
+   
     public float border = 10f;
     public float reachTolerance = 0.5f;
     public float speed = 5f;
     public float wanderRadius = 8f;
 
-    [Header("Repathing")]
+   
+
     public bool repathIfTargetMoved = true;
     public float repathMoveThreshold = 1.0f;
 
@@ -18,6 +19,9 @@ public class OrganismBehaviour : MonoBehaviour
 
     private List<PathfindingAstar.GraphNode> allNodes = new List<PathfindingAstar.GraphNode>();
     private Dictionary<string, PathfindingAstar.GraphNode> nodeByName = new Dictionary<string, PathfindingAstar.GraphNode>();
+
+    public List<PathfindingAstar.GraphNode> lastPath = new List<PathfindingAstar.GraphNode>();
+
 
     private List<Vector2> pathPoints = new List<Vector2>();
     private int pathIndex = 0;
@@ -183,8 +187,14 @@ public class OrganismBehaviour : MonoBehaviour
         }
 
         // New A*: SolveAstar(startNode, goalNode, heuristic)
-        PathfindingAstar.AStarResult result =
-            PathfindingAstar.SolveAstar(startNode, goalNode, heuristic);
+        PathfindingAstar.AStarResult result = PathfindingAstar.SolveAstar(startNode, goalNode, heuristic);
+
+           if (result.found && result.path != null)
+        {
+            lastPath.Clear();
+            lastPath.AddRange(result.path);
+        }
+
 
         if (!result.found || result.path == null || result.path.Count == 0)
             return;
@@ -194,6 +204,13 @@ public class OrganismBehaviour : MonoBehaviour
         {
             pathPoints.Add(GetNodePosition(result.path[i]));
         }
+
+
+     
+        Debug.Log("PATH COUNT: " + lastPath.Count);
+
+
+
     }
 
     private void FollowPath()
