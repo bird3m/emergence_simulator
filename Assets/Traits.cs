@@ -130,8 +130,12 @@ public class Traits : MonoBehaviour
 
     public float GetSpeed(float powerToWeight)
     {
-        float s = 0.85f * powerToWeight + 0.15f * metabolic_rate;
-        return Mathf.Clamp01(s);
+        
+        float metabolicSpeed = metabolic_rate * 1.6f;  
+        float speed = (1.75f * powerToWeight) + (1.25f * metabolicSpeed);
+
+       
+        return Mathf.Clamp(speed, 0.1f, 5f); //maximum speed value
     }
 
     public float GetBaselineEnergyDrain()
