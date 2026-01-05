@@ -127,8 +127,8 @@ public class Traits : MonoBehaviour
 
     public float GetBaselineEnergyDrain()
     {
-        const float minDrain = 0.02f;
-        const float maxExtra = 0.10f;
+        const float minDrain = 0.2f;
+        const float maxExtra = 0.25f;
         return minDrain + maxExtra * metabolic_rate;
     }
 
