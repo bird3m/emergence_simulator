@@ -4,23 +4,21 @@ using UnityEngine.UI;
 public class BarsUI : MonoBehaviour
 {
     public Slider healthSlider;
-    public Slider energySlider;
 
     public Traits traits;
 
     void Start()
     {
-        healthSlider.maxValue = 1;
-        energySlider.maxValue = 1;
+        if (traits != null)
+        {
+            healthSlider.maxValue = traits.maxEnergy;
+        }
     }
 
     private void Update()
     {
         if (traits == null) return;
+        healthSlider.value = traits.currentEnergy;
 
-        // update values (safe clamps)
-        healthSlider.value = traits.currentHealth / traits.maxHealth;
-
-        energySlider.value = traits.currentEnergy / traits.maxEnergy;
     }
 }

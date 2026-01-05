@@ -4,9 +4,9 @@ using UnityEngine;
 public class Traits : MonoBehaviour
 {
     #region genes (0..1 except heuristic)
-    // Health state
-    public float maxHealth;
-    public float currentHealth;
+    // Energy state (health now based on energy)
+    public float maxEnergy;
+    public float currentEnergy;
 
     // physical traits
     [Range(0f, 1f)] public float mass;
@@ -18,7 +18,6 @@ public class Traits : MonoBehaviour
     [Range(0f, 1f)] public float risk_aversion;
 
     // heuristic traits
-    // NOTE: this is your offset gene in [-1,1] (later mapped to +-bias)
     [Range(-1f, 1f)] public float upperSlopeHeuristic;
     [Range(-1f, 1f)] public float lowerSlopeHeuristic;
     [Range(0f, 1f)] public float danger_weight;
@@ -47,14 +46,9 @@ public class Traits : MonoBehaviour
     // optional: heuristic bias scale (heuristic gene is [-1,1])
     public float maxHeuristicBias = 0.30f; // +-0.10 as you described
 
-    public float maxEnergy;
-    public float currentEnergy;
+    public Sprite corpseSprite;          // corpse sprite
+    public float corpseNutrition = 30f;  // nutrition from corpse
 
-
-    public Sprite corpseSprite;          // kurukafa sprite'ı buraya koy
-    public float corpseNutrition = 30f;  // leşteki başlangıç besin
-
-    public int generationIndex = 0;      // GA her jenerasyonda bunu set edecek
     public int carcassExpireAfterGenerations = 2;
     public bool hasBecomeCarcass = false;
 
@@ -69,10 +63,6 @@ public class Traits : MonoBehaviour
         RecomputeAll();
     }
 
-    /// <summary>
-    /// Call this after GA assigns chromosm to force recomputation.
-    /// Minimal integration point for GA code.
-    /// </summary>
     public void ApplyChromosomeAndRecompute()
     {
         if (chromosm != null && chromosm.Length >= 9)
@@ -107,8 +97,7 @@ public class Traits : MonoBehaviour
         MoveEnergyCostPerUnit = GetMoveEnergyCostPerUnit(EffectiveMass, Speed);
         Boldness = GetBoldness();
 
-        InitializeHealth();
-        InitializeEnergy();
+        InitializeEnergy();  // Initialize energy only
         EvaluateEmergences();
     }
 
@@ -136,8 +125,8 @@ public class Traits : MonoBehaviour
 
     public float GetBaselineEnergyDrain()
     {
-        const float minDrain = 1f;
-        const float maxExtra = 2f;
+        const float minDrain = 0.5f;
+        const float maxExtra = 1f;
         return minDrain + maxExtra * metabolic_rate;
     }
 
@@ -161,51 +150,17 @@ public class Traits : MonoBehaviour
 
     public void EvaluateEmergences()
     {
-        // reset all first (important)
-        can_fly = false;
-        can_herd = false;
-        is_scavenging = false;
-        is_carnivore = false;
-        can_camouflage = false;
-
-        // independent
         can_camouflage = (camouflage >= 0.60f);
 
-        // carnivore
-        if ((agression >= 0.60f) &&
-            (PowerToWeight >= 0.55f) &&
-            (metabolic_rate >= 0.45f) &&
-            (risk_aversion <= 0.70f))
-        {
-            is_carnivore = true;
-        }
+        can_fly = (EffectiveMass <= 0.55f) && (PowerToWeight >= 0.70f) && (metabolic_rate >= 0.65f);
+        can_herd = (risk_aversion >= 0.60f) && (danger_weight >= 0.60f);
 
-        // scavenging
-        if ((risk_aversion >= 0.55f) &&
-            (danger_weight >= 0.55f) &&
-            (agression <= 0.65f))
-        {
-            is_scavenging = true;
-        }
-
-        // fly (abstract, wingless)
-        if ((EffectiveMass <= 0.55f) &&
-            (PowerToWeight >= 0.70f) &&
-            (metabolic_rate >= 0.65f))
-        {
-            can_fly = true;
-        }
-
-        // herd (NOTE: ideally depends on local density too; keep minimal as you asked)
-        if ((risk_aversion >= 0.60f) &&
-            (danger_weight >= 0.60f))
-        {
-            can_herd = true;
-        }
+        is_carnivore = (agression >= 0.60f) && (PowerToWeight >= 0.55f) && (metabolic_rate >= 0.45f) && (risk_aversion <= 0.70f);
+        is_scavenging = (risk_aversion >= 0.55f) && (danger_weight >= 0.55f) && (agression <= 0.65f);
     }
 
     // ---------------------------
-    // Health + fitness
+    // Energy + fitness
     // ---------------------------
 
     public void InitializeEnergy()
@@ -217,105 +172,62 @@ public class Traits : MonoBehaviour
         currentEnergy = maxEnergy * 0.5f; // start half-full
     }
 
-
-    public void InitializeHealth()
-    {
-        const float BASE_HEALTH = 50f;
-        const float MASS_HEALTH_BONUS = 100f;
-
-        maxHealth = BASE_HEALTH + MASS_HEALTH_BONUS * mass;
-
-        // If you re-initialize every generation spawn, you want full health.
-        // If you want to preserve health across recompute calls, guard it.
-        currentHealth = maxHealth;
-    }
-
     public void Eat(float energy)
     {
-        // 1) gain energy
+        // Gain energy
         currentEnergy += energy;
 
-        // clamp
+        // Clamp energy to the max value
         currentEnergy = Mathf.Clamp(currentEnergy, 0f, maxEnergy);
-
-        // 2) optional: tiny instant health benefit ONLY if energy is already decent
-        // prevents "heal from 0 by eating once"
-        const float INSTANT_HEAL_FRACTION = 0.05f; // 5% of energy converts to health
-        if (currentEnergy > 0.5f * maxEnergy)
-        {
-            currentHealth += energy * INSTANT_HEAL_FRACTION;
-            currentHealth = Mathf.Clamp(currentHealth, 0f, maxHealth);
-        }
-    }
-
-
-    public float GetTotalEnergyDrain(float movementDistance)
-    {
-        float baselineDrain = BaselineEnergyDrain;
-        float movementDrain = MoveEnergyCostPerUnit * movementDistance;
-        return baselineDrain + movementDrain;
     }
 
     public void UpdateVitals(float movementDistance, float deltaTime)
     {
-        const float STARVATION_DAMAGE_SCALE = 1f; // tune
-        const float HEALTH_REGEN_PER_SEC = 2f;     // optional, can set 0 if you want none
+        const float ENERGY_REGEN_PER_SEC = 2f;     // optional, can set 0 if you want none
         const float REGEN_ENERGY_THRESHOLD = 0.7f; // must have >=70% energy to regen
 
-        // 1) compute total energy drain
+        // 1) Compute total energy drain
         float energyDrainPerSec = BaselineEnergyDrain + (MoveEnergyCostPerUnit * movementDistance);
-        float energyLoss = energyDrainPerSec * 10f * deltaTime; // "10f" is your old HEALTH_DAMAGE_SCALE role; now it's energy scale
+        float energyLoss = energyDrainPerSec * 10f * Time.unscaledDeltaTime;  // deltaTime yerine Time.unscaledDeltaTime
 
-        // 2) pay from energy
+        // 2) Pay from energy
         currentEnergy -= energyLoss;
 
-        // 3) if energy below 0 -> convert deficit into health damage
+        // 3) If energy below 0 -> convert deficit into health damage
         if (currentEnergy < 0f)
         {
-            float deficit = -currentEnergy;
             currentEnergy = 0f;
-
-            currentHealth -= deficit * STARVATION_DAMAGE_SCALE;
         }
 
-        // 4) optional: slow health regen if energy is high
+        // 4) Optional: slow health regen if energy is high
         if (currentEnergy / Mathf.Max(maxEnergy, 1e-4f) >= REGEN_ENERGY_THRESHOLD)
         {
-            currentHealth += HEALTH_REGEN_PER_SEC * deltaTime;
+            currentEnergy += ENERGY_REGEN_PER_SEC * Time.unscaledDeltaTime;  // Use unscaledDeltaTime
         }
 
-        currentHealth = Mathf.Clamp(currentHealth, 0f, maxHealth);
         currentEnergy = Mathf.Clamp(currentEnergy, 0f, maxEnergy);
-
-        if (IsDead() && !hasBecomeCarcass)
-        {
-            DieIntoResource();
-        }
-
-
     }
-
 
     public bool IsDead()
     {
-        return currentHealth <= 0f;
+        return currentEnergy <= 0f;
     }
 
     /// <summary>
     /// Fitness in [0..1]. GA can maximize this.
-    /// Simple: remaining health fraction.
+    /// Simple: remaining energy fraction.
     /// </summary>
     public float Fitness01()
     {
-        if (maxHealth <= 1e-4f) return 0f;
-        return Mathf.Clamp01(currentHealth / maxHealth);
+        if (maxEnergy <= 1e-4f) return 0f;
+        return Mathf.Clamp01(currentEnergy / maxEnergy);
     }
 
     private void DieIntoResource()
     {
         hasBecomeCarcass = true;
 
-        // 1) Hareketi durdur (OrganismBehaviour'i devre dışı bırak)
+        // Stop movement (disable OrganismBehaviour)
         OrganismBehaviour ob = GetComponent<OrganismBehaviour>();
         if (ob != null) ob.enabled = false;
 
@@ -324,29 +236,28 @@ public class Traits : MonoBehaviour
         {
             rb.linearVelocity = Vector2.zero;
             rb.angularVelocity = 0f;
-            rb.simulated = false;  // hareketsiz olsun
+            rb.simulated = false;  // Make it static
         }
 
         SpriteRenderer sr = GetComponent<SpriteRenderer>();
         if (sr != null && corpseSprite != null)
             sr.sprite = corpseSprite;
 
-        // 3) Resource component ekle
+        // 3) Add Resource component
         resource resource = GetComponent<resource>();
         if (resource == null)
             resource = gameObject.AddComponent<resource>();
 
-        // Resource için besin değerini ayarla (örneğin: organizmanın mevcut enerjisi + fazla bir miktar)
+        // Set nutrition value based on energy
         resource.nutrition = currentEnergy * 0.5f + 5f;
 
         if (SourceManager.I != null)
             SourceManager.I.Register(GetComponent<resource>());
     }
-    
+
     private void OnDisable()
     {
         if (SourceManager.I != null)
             SourceManager.I.Unregister(GetComponent<resource>());
     }
-
 }
