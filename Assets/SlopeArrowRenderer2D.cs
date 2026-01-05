@@ -3,7 +3,7 @@ using UnityEngine;
 public class SlopeArrowRenderer2D : MonoBehaviour
 {
     [Header("Reference")]
-    public RandomSlopeTerrain2D terrain;   // drag your terrain component here (or same object)
+    public Terrain terrain;   // drag your terrain component here (or same object)
 
     [Header("Arrow Look")]
     public float minArrowLength = 0.10f;   // when slope is tiny but not zero
@@ -28,7 +28,7 @@ public class SlopeArrowRenderer2D : MonoBehaviour
    private void Awake()
 {
     if (terrain == null)
-        terrain = GetComponent<RandomSlopeTerrain2D>();
+        terrain = GetComponent<Terrain>();
 
     Shader sh = Shader.Find("Sprites/Default");
     lineMaterial = new Material(sh);

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class RandomSlopeTerrain2D : MonoBehaviour
+public class Terrain : MonoBehaviour
 {
     [Header("Grid Size")]
     public int width = 20;

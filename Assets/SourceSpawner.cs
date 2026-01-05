@@ -3,7 +3,7 @@ using UnityEngine;
 public class SourceSpawner : MonoBehaviour
 {
     [Header("References")]
-    public RandomSlopeTerrain2D terrain;      // your terrain script
+    public Terrain terrain;      // your terrain script
     public GameObject sourcePrefab;           // assign your "source" prefab
 
     [Header("Density")]
@@ -45,7 +45,7 @@ public class SourceSpawner : MonoBehaviour
     [ContextMenu("Spawn All")]
     public void SpawnAll()
     {
-        if (terrain == null) terrain = FindObjectOfType<RandomSlopeTerrain2D>();
+        if (terrain == null) terrain = FindObjectOfType<Terrain>();
         if (terrain == null)
         {
             Debug.LogError("SourceSpawner2D: terrain not set.");

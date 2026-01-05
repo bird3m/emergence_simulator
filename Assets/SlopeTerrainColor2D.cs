@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class SlopeTerrainColor2D : MonoBehaviour
 {
-    public RandomSlopeTerrain2D terrain;
+    public Terrain terrain;
 
     [Header("Mars Colors")]
     public Color marsBright = new Color(0.78f, 0.42f, 0.24f);
@@ -19,7 +19,7 @@ public class SlopeTerrainColor2D : MonoBehaviour
     private void Start()
     {
         if (terrain == null)
-            terrain = GetComponent<RandomSlopeTerrain2D>();
+            terrain = GetComponent<Terrain>();
 
         BuildCells();
         UpdateColors();
