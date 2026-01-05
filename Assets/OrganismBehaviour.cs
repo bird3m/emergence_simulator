@@ -48,9 +48,15 @@ public class OrganismBehaviour : MonoBehaviour
     private PathfindingAstar.GraphNode lastCellNode = null;
     private float accumulatedRealEffort = 0f;
 
+    [Header("AI Tick (Performance)")]
+    public float repathInterval = 0.35f;      // 0.25 - 0.75 iyi
+    public float targetSearchInterval = 0.35f; // source arama aralığı
+    public float thinkJitter = 0.15f;          // canlılar aynı frame düşünmesin
 
-    public float targetSearchInterval = 0.25f;
+    private float nextRepathTime = 0f;
     private float nextSearchTime = 0f;
+
+
 
     private void Start()
     {
@@ -77,6 +83,11 @@ public class OrganismBehaviour : MonoBehaviour
 
         // traits cache (sende public ama null kalabiliyor)
         if (traits == null) traits = GetComponent<Traits>();
+
+        float j = UnityEngine.Random.Range(0f, thinkJitter);
+        nextRepathTime = Time.time + j;
+        nextSearchTime = Time.time + j;
+
     }
 
     private void BuildSharedGraph()
@@ -115,94 +126,111 @@ public class OrganismBehaviour : MonoBehaviour
 
     private void Update()
     {
-        if (allNodes.Count == 0) return;
+        if (!enabled) return;
+        if (allNodes == null || allNodes.Count == 0) return;
+
         Vector2 beforeMove = transform.position;
 
-        // Acquire target ONLY if none
+        // -------------------------
+        // THINK (only sometimes)
+        // -------------------------
+        float nowTime = Time.time;
+
+        // 1) Acquire target occasionally (NOT every frame)
         if (currentTarget == null)
         {
-            if (Time.time >= nextSearchTime)
+            if (nowTime >= nextSearchTime)
             {
-                nextSearchTime = Time.time + targetSearchInterval + UnityEngine.Random.Range(0f, 0.1f);
+                nextSearchTime = nowTime + targetSearchInterval + UnityEngine.Random.Range(0f, thinkJitter);
 
                 currentTarget = FindClosestSourceInRange();
+
                 if (currentTarget != null)
                 {
+                    // plan once when acquired
                     CalculateAStarPath(currentTarget.transform.position);
                     lastPlannedTargetPos = currentTarget.transform.position;
+
+                    // also schedule next repath time
+                    nextRepathTime = nowTime + repathInterval + UnityEngine.Random.Range(0f, thinkJitter);
                 }
             }
         }
         else
         {
-            // If target got destroyed / disabled
+            // if target destroyed
             if (!currentTarget.activeInHierarchy)
             {
                 currentTarget = null;
                 pathPoints.Clear();
                 pathIndex = 0;
             }
-            else if (repathIfTargetMoved)
+            else
             {
-                Vector2 now = currentTarget.transform.position;
-                if (Vector2.Distance(now, lastPlannedTargetPos) > repathMoveThreshold)
+                // 2) Repath occasionally, and only if target moved enough
+                if (nowTime >= nextRepathTime)
                 {
-                    CalculateAStarPath(now);
-                    lastPlannedTargetPos = now;
+                    nextRepathTime = nowTime + repathInterval + UnityEngine.Random.Range(0f, thinkJitter);
+
+                    if (repathIfTargetMoved)
+                    {
+                        Vector2 tpos = currentTarget.transform.position;
+
+                        if (Vector2.Distance(tpos, lastPlannedTargetPos) > repathMoveThreshold)
+                        {
+                            CalculateAStarPath(tpos);
+                            lastPlannedTargetPos = tpos;
+                        }
+                    }
                 }
             }
         }
 
-        // If no target: wander
+        // -------------------------
+        // ACT (every frame)
+        // -------------------------
         if (currentTarget == null)
-        {
             Wander();
-        }
 
         FollowPath();
 
-        // Fallback: if path ended but still have target, go direct
+        // If reached end and have target: consume + clear
         if (pathIndex == pathPoints.Count && currentTarget != null)
         {
             var res = currentTarget.GetComponent<resource>();
             float nut = (res != null) ? res.nutrition : 0f;
 
-            // respawn schedule
-            SourceSpawner spwn = FindObjectOfType<SourceSpawner>();
-            if (spwn != null)
-                spwn.ScheduleRespawn(nut);
+            if (spawner != null) spawner.ScheduleRespawn(nut);
 
             Destroy(currentTarget);
 
-            if (traits != null)
-                traits.Eat(nut);
+            if (traits != null) traits.Eat(nut);
 
             currentTarget = null;
+            pathPoints.Clear();
+            pathIndex = 0;
         }
 
+        // -------------------------
+        // VITALS (every frame)
+        // -------------------------
         float movedDistance = Vector2.Distance((Vector2)transform.position, beforeMove);
 
-        float slope = CurrentCellSlope(); // + uphill, - downhill
+        float slope = CurrentCellSlope();
         float slope01 = Mathf.Clamp01(Mathf.Abs(slope) / Mathf.Max(0.0001f, terrain.maxAbsSlope));
 
-
         float mult = 1f;
-        if (slope > 0f)
-        {
-            mult = 1f + slope01 * uphillExtra; 
-        }
-        else if (slope < 0f)
-        {
-            mult = 1f - slope01 * downhillDiscount; 
-        }
+        if (slope > 0f) mult = 1f + slope01 * uphillExtra;
+        else if (slope < 0f) mult = 1f - slope01 * downhillDiscount;
 
         mult = Mathf.Max(minEnergyMultiplier, mult);
 
         float effort = movedDistance * mult;
-        traits.UpdateVitals(effort, Time.deltaTime);
 
-
+        if (traits != null)
+            traits.UpdateVitals(effort, Time.deltaTime);
     }
+
 
 
     private uint DebugPlannedPathCost()
@@ -249,37 +277,9 @@ public class OrganismBehaviour : MonoBehaviour
             return;
 
         // Heuristic dictionary must be GraphNode -> uint for the new A*
-        Dictionary<PathfindingAstar.GraphNode, uint> heuristic =
-            new Dictionary<PathfindingAstar.GraphNode, uint>(allNodes.Count);
+        PathfindingAstar.AStarResult result = PathfindingAstar.SolveAstar(startNode, goalNode, (n) => HeuristicForNode(n, destination));
 
-        for (int i = 0; i < allNodes.Count; i++)
-        {
-            PathfindingAstar.GraphNode n = allNodes[i];
-
-            ParseNodeXY(n, out int nx, out int ny);
-
-            // base distance (in cells)
-            Vector2 np = GetNodePosition(n);
-            float dist = Vector2.Distance(np, destination); // world distance, OK
-
-            // use slope at node as a cheap proxy for what's ahead
-            float s = terrain.GetSlope(nx, ny);
-            float x = NormalizedAbsSlope(s);
-            float bias = SlopeBiasFactor(s);
-
-            // If on uphill cell and organism has good bias, h becomes larger (more conservative)
-            // If organism is wrong, h is too optimistic/pessimistic and A* chooses worse routes.
-            float h = dist * 10f * (1f + ( (s > 0f) ? (0.8f * x) : (0.2f * x) )) * (1f + bias);
-
-            h = Mathf.Clamp(h, 1f, 100000f);
-            heuristic[n] = (uint)Mathf.RoundToInt(h);
-        }
-
-
-        // New A*: SolveAstar(startNode, goalNode, heuristic)
-        PathfindingAstar.AStarResult result = PathfindingAstar.SolveAstar(startNode, goalNode, heuristic);
-
-           if (result.found && result.path != null)
+        if (result.found && result.path != null)
         {
             lastPath.Clear();
             lastPath.AddRange(result.path);
@@ -437,6 +437,27 @@ public class OrganismBehaviour : MonoBehaviour
         return closest;
     }
 
+    private uint HeuristicForNode(PathfindingAstar.GraphNode n, Vector2 destination)
+    {
+        // Node'un x, y koordinatlarını çözümle
+        ParseNodeXY(n, out int nx, out int ny);
+
+        // Gerçek mesafeyi (dünya) hesapla
+        Vector2 np = GetNodePosition(n);
+        float dist = Vector2.Distance(np, destination);
+
+        // Slope ve gene bias hesaplamalarını yap
+        float s = terrain.GetSlope(nx, ny);
+        float x = NormalizedAbsSlope(s);          // Normalize edilmiş slope
+        float bias = SlopeBiasFactor(s);         // Genetik offset
+
+        // Heuristic hesaplama (mesafe * eğilim + bias)
+        float h = dist * 10f * (1f + ( (s > 0f) ? (0.8f * x) : (0.2f * x) )) * (1f + bias);
+        h = Mathf.Clamp(h, 1f, 100000f); // Heuristic'in mantıklı bir aralıkta olmasını sağla
+
+        return (uint)Mathf.RoundToInt(h);
+    }
+
     private void SetRandomWanderTarget()
     {
         pathPoints.Clear();
@@ -459,9 +480,10 @@ public class OrganismBehaviour : MonoBehaviour
 
     private void ParseNodeXY(PathfindingAstar.GraphNode node, out int x, out int y)
     {
-        string[] parts = node.name.Split(',');
-        x = int.Parse(parts[0]);
-        y = int.Parse(parts[1]);
+        string name = node.name;
+        int comma = name.IndexOf(',');
+        x = int.Parse(name.Substring(0, comma));
+        y = int.Parse(name.Substring(comma + 1));
     }
 
     private float NormalizedAbsSlope(float s)

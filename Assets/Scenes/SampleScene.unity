@@ -845,7 +845,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GeneticAlgorithm
   organismPrefab: {fileID: 1327708465454452514, guid: b6e2f98ed376ee740909d269ec1ac864, type: 3}
   spawnPoints: []
-  populationSize: 20
+  populationSize: 100
   eliteCount: 4
   crossoverRate: 0.9
   mutationRate: 0.08
