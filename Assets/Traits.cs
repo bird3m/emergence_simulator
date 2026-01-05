@@ -251,7 +251,7 @@ public class Traits : MonoBehaviour
 
     public void UpdateVitals(float movementDistance, float deltaTime)
     {
-        const float STARVATION_DAMAGE_SCALE = 5f; // tune
+        const float STARVATION_DAMAGE_SCALE = 1f; // tune
         const float HEALTH_REGEN_PER_SEC = 2f;     // optional, can set 0 if you want none
         const float REGEN_ENERGY_THRESHOLD = 0.7f; // must have >=70% energy to regen
 
