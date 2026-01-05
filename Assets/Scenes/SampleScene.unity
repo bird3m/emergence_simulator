@@ -437,10 +437,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SourceSpawner
   sourcePrefab: {fileID: 242896139255199108, guid: bf876e7ac42bfb04d8a2ec0ea4b45cae, type: 3}
   terrain: {fileID: 1512186857}
-  respawnDelay: 8
+  respawnDelay: 0.1
   maxTries: 200
   spawnOnStart: 1
-  initialCount: 50
+  initialCount: 500
   sourceLayerMask:
     serializedVersion: 2
     m_Bits: 0
