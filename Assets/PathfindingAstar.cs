@@ -4,7 +4,65 @@ using System.Collections.Generic;
 
 public class PathfindingAstar : MonoBehaviour
 {
-    // Priority queue implementation for efficient node selection
+    // -------------------- Graph Structures --------------------
+
+    [Serializable]
+    public class GraphNode
+    {
+        public string name;
+        public List<Link> links = new List<Link>();
+
+        public GraphNode(string name)
+        {
+            this.name = name;
+        }
+    }
+
+    [Serializable]
+    public struct Link
+    {
+        public uint cost;
+        public GraphNode node;
+
+        public Link(uint c, GraphNode n)
+        {
+            cost = c;
+            node = n;
+        }
+    }
+
+    // Only used inside the heap (fringe)
+    public class TreeNode
+    {
+        public GraphNode node;
+        public uint gCost;
+        public uint hCost;
+    }
+
+    public struct AStarResult
+    {
+        public bool found;
+        public uint totalCost;
+        public List<GraphNode> path; // start -> goal
+    }
+
+    // -------------------- Comparator (C++ style) --------------------
+
+    public class CompareNode_Astar : IComparer<TreeNode>
+    {
+        public int Compare(TreeNode a, TreeNode b)
+        {
+            uint f1 = a.gCost + a.hCost;
+            uint f2 = b.gCost + b.hCost;
+
+            if (f1 < f2) return -1;
+            if (f1 > f2) return 1;
+            return 0;
+        }
+    }
+
+    // -------------------- MinHeap (C++ priority_queue vibe) --------------------
+
     public class MinHeap<T>
     {
         private List<T> data = new List<T>();
@@ -20,195 +78,204 @@ public class PathfindingAstar : MonoBehaviour
             return data.Count == 0;
         }
 
+        public int Size()
+        {
+            return data.Count;
+        }
+
+        public T Top()
+        {
+            if (data.Count == 0)
+                throw new InvalidOperationException("Heap is empty");
+            return data[0];
+        }
+
         public void Push(T item)
         {
             data.Add(item);
             SiftUp(data.Count - 1);
         }
 
-        public T ExtractTop()
+        public void Pop()
         {
-            if (data.Count == 0) throw new InvalidOperationException("Heap is empty");
-            T topItem = data[0];
-            int lastIndex = data.Count - 1;
-            data[0] = data[lastIndex];
-            data.RemoveAt(lastIndex);
+            if (data.Count == 0)
+                throw new InvalidOperationException("Heap is empty");
 
-            if (data.Count > 0) SiftDown(0);
-            return topItem;
+            int last = data.Count - 1;
+            data[0] = data[last];
+            data.RemoveAt(last);
+
+            if (data.Count > 0)
+                SiftDown(0);
         }
 
-        private void SiftUp(int index)
+        public T ExtractTop()
         {
-            while (index > 0)
+            T t = Top();
+            Pop();
+            return t;
+        }
+
+        private void SiftUp(int i)
+        {
+            while (i > 0)
             {
-                int parentIndex = (index - 1) / 2;
-                if (comparer.Compare(data[parentIndex], data[index]) <= 0) break;
-                Swap(parentIndex, index);
-                index = parentIndex;
+                int parent = (i - 1) / 2;
+
+                if (comparer.Compare(data[parent], data[i]) <= 0)
+                    break;
+
+                Swap(parent, i);
+                i = parent;
             }
         }
 
-        private void SiftDown(int index)
+        private void SiftDown(int i)
         {
-            int count = data.Count;
+            int n = data.Count;
+
             while (true)
             {
-                int leftChild = 2 * index + 1;
-                int rightChild = 2 * index + 2;
-                int bestIndex = index;
+                int left = 2 * i + 1;
+                int right = 2 * i + 2;
+                int best = i;
 
-                if (leftChild < count && comparer.Compare(data[leftChild], data[bestIndex]) < 0)
-                    bestIndex = leftChild;
+                if (left < n && comparer.Compare(data[left], data[best]) < 0)
+                    best = left;
 
-                if (rightChild < count && comparer.Compare(data[rightChild], data[bestIndex]) < 0)
-                    bestIndex = rightChild;
+                if (right < n && comparer.Compare(data[right], data[best]) < 0)
+                    best = right;
 
-                if (bestIndex == index) break;
+                if (best == i)
+                    break;
 
-                Swap(index, bestIndex);
-                index = bestIndex;
+                Swap(i, best);
+                i = best;
             }
         }
 
         private void Swap(int a, int b)
         {
-            T temp = data[a];
+            T tmp = data[a];
             data[a] = data[b];
-            data[b] = temp;
+            data[b] = tmp;
         }
     }
 
-    public class GraphNode
-    {
-        public string name;
-        public List<Link> links = new List<Link>();
-    }
+    // -------------------- A* (NO string path) --------------------
 
-    public class Link
+    public static AStarResult SolveAstar(
+        GraphNode start,
+        GraphNode goal,
+        Dictionary<GraphNode, uint> heuristic
+    )
     {
-        public uint cost;
-        public GraphNode node;
+        AStarResult result = new AStarResult();
+        result.found = false;
+        result.totalCost = 0;
+        result.path = new List<GraphNode>();
 
-        public Link(uint cost, GraphNode node)
+        if (start == null || goal == null)
+            return result;
+
+        if (heuristic == null)
+            throw new Exception("Heuristic dictionary is null.");
+
+        // Min-heap ordered by f = g + h
+        MinHeap<TreeNode> open = new MinHeap<TreeNode>(new CompareNode_Astar());
+
+        HashSet<GraphNode> closed = new HashSet<GraphNode>();
+        Dictionary<GraphNode, GraphNode> cameFrom = new Dictionary<GraphNode, GraphNode>();
+        Dictionary<GraphNode, uint> gScore = new Dictionary<GraphNode, uint>();
+
+        if (!heuristic.ContainsKey(start))
+            throw new Exception("Heuristic missing for start node: " + start.name);
+
+        if (!heuristic.ContainsKey(goal))
+            throw new Exception("Heuristic missing for goal node: " + goal.name);
+
+        gScore[start] = 0;
+
+        TreeNode root = new TreeNode();
+        root.node = start;
+        root.gCost = 0;
+        root.hCost = heuristic[start];
+
+        open.Push(root);
+
+        while (!open.Empty())
         {
-            this.cost = cost;
-            this.node = node;
-        }
-    }
+            TreeNode currentTN = open.ExtractTop();
+            GraphNode current = currentTN.node;
 
-    // Node structure for the search tree
-    public class TreeNode
-    {
-        public GraphNode node;   
-        public TreeNode parent;  // Pointer to the previous node to reconstruct the path
-        public uint cost;        // g(n): cost from start to current node
-        public uint hCost;       // h(n): estimated cost to goal
-    }
+            if (closed.Contains(current))
+                continue;
 
-    // Result structure to fix the CS1061 errors in OrganismBehaviour
-    public struct AStarResult
-    {
-        public GraphNode endNode; 
-        public string pathStr;    
-        public uint totalCost;
-    }
-
-    public class CompareNode_Astar : IComparer<TreeNode>
-    {
-        public int Compare(TreeNode a, TreeNode b)
-        {
-            uint f1 = a.cost + a.hCost;
-            uint f2 = b.cost + b.hCost;
-
-            if (f1 < f2) return -1;
-            if (f1 > f2) return 1;
-            return 0;
-        }
-    }
-
-    public static class AStar
-    {
-        public static AStarResult SolveAstar(GraphNode startGraphNode, string goalName, Dictionary<string, uint> heuristic)
-        {
-            Debug.Log("Starting A* Search...");
-
-            AStarResult result = new AStarResult();
-            result.endNode = null;
-            result.pathStr = "NO SOLUTION";
-            result.totalCost = 0;
-
-            uint expandedNodesCount = 0;
-            // Dictionary to keep track of the minimum cost to reach a node
-            Dictionary<GraphNode, uint> costTracker = new Dictionary<GraphNode, uint>();
-            MinHeap<TreeNode> fringe = new MinHeap<TreeNode>(new CompareNode_Astar());
-
-            if (startGraphNode != null)
+            if (current == goal)
             {
-                TreeNode root = new TreeNode();
-                root.node = startGraphNode;
-                root.parent = null;
-                root.cost = 0;
-                root.hCost = heuristic.ContainsKey(root.node.name) ? heuristic[root.node.name] : 0;
+                result.found = true;
+                result.totalCost = gScore[current];
+                result.path = ReconstructPath(cameFrom, current);
+                return result;
+            }
 
-                fringe.Push(root);
-                costTracker[startGraphNode] = 0;
+            closed.Add(current);
 
-                while (!fringe.Empty())
+            for (int i = 0; i < current.links.Count; i++)
+            {
+                Link l = current.links[i];
+                GraphNode neighbor = l.node;
+
+                if (neighbor == null)
+                    continue;
+
+                if (closed.Contains(neighbor))
+                    continue;
+
+                if (!gScore.ContainsKey(current))
+                    gScore[current] = uint.MaxValue;
+
+                uint tentativeG = gScore[current] + l.cost;
+
+                bool better = !gScore.ContainsKey(neighbor) || tentativeG < gScore[neighbor];
+
+                if (better)
                 {
-                    TreeNode currentTreeNode = fringe.ExtractTop();
-                    expandedNodesCount++;
+                    if (!heuristic.ContainsKey(neighbor))
+                        throw new Exception("Heuristic missing for node: " + neighbor.name);
 
-                    // Goal check
-                    if (currentTreeNode.node.name == goalName)
-                    {
-                        result.endNode = currentTreeNode.node;
-                        result.pathStr = ReconstructPathString(currentTreeNode);
-                        result.totalCost = currentTreeNode.cost;
-                        break;
-                    }
+                    cameFrom[neighbor] = current;
+                    gScore[neighbor] = tentativeG;
 
-                    // Expand neighbors
-                    for (int i = 0; i < currentTreeNode.node.links.Count; i++)
-                    {
-                        Link connection = currentTreeNode.node.links[i];
-                        uint newMovementCost = currentTreeNode.cost + connection.cost;
+                    TreeNode tn = new TreeNode();
+                    tn.node = neighbor;
+                    tn.gCost = tentativeG;
+                    tn.hCost = heuristic[neighbor];
 
-                        // Only add to fringe if we found a cheaper way to reach this node
-                        if (!costTracker.ContainsKey(connection.node) || newMovementCost < costTracker[connection.node])
-                        {
-                            costTracker[connection.node] = newMovementCost;
-
-                            TreeNode nextNode = new TreeNode();
-                            nextNode.node = connection.node;
-                            nextNode.parent = currentTreeNode;
-                            nextNode.cost = newMovementCost;
-                            nextNode.hCost = heuristic.ContainsKey(nextNode.node.name) ? heuristic[nextNode.node.name] : 0;
-
-                            fringe.Push(nextNode);
-                        }
-                    }
+                    open.Push(tn);
                 }
             }
-
-            Debug.Log("Nodes Expanded: " + expandedNodesCount);
-            return result;
         }
 
-        // Helper function to build the path string by backtracking through parents
-        private static string ReconstructPathString(TreeNode leafNode)
+        // not found
+        return result;
+    }
+
+    private static List<GraphNode> ReconstructPath(
+        Dictionary<GraphNode, GraphNode> cameFrom,
+        GraphNode current
+    )
+    {
+        List<GraphNode> path = new List<GraphNode>();
+        path.Add(current);
+
+        while (cameFrom.ContainsKey(current))
         {
-            List<string> pathList = new List<string>();
-            TreeNode current = leafNode;
-
-            while (current != null)
-            {
-                pathList.Add(current.node.name);
-                current = current.parent;
-            }
-
-            pathList.Reverse();
-            return string.Join(", ", pathList);
+            current = cameFrom[current];
+            path.Add(current);
         }
+
+        path.Reverse();
+        return path;
     }
 }
