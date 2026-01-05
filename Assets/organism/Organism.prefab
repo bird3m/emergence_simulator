@@ -216,7 +216,7 @@ GameObject:
   - component: {fileID: 3788187831198522187}
   - component: {fileID: 3090274887604956481}
   - component: {fileID: -1575770003150650132}
-  - component: {fileID: 7463495986163517392}
+  - component: {fileID: 8374197187614914342}
   m_Layer: 0
   m_Name: Organism
   m_TagString: Untagged
@@ -401,12 +401,16 @@ MonoBehaviour:
   downhillDiscount: 0.5
   maxAbsSlopeForNorm: 1
   minEnergyMultiplier: 0.1
+  spawner: {fileID: 0}
   repathIfTargetMoved: 1
   repathMoveThreshold: 1
   lastPath: []
   traits: {fileID: 7737531533977272853}
   debugCosts: 1
   debugLogChance: 0.02
+  repathInterval: 0.35
+  targetSearchInterval: 0.35
+  thinkJitter: 0.15
 --- !u!114 &3090274887604956481
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -532,22 +536,19 @@ LineRenderer:
   m_UseWorldSpace: 1
   m_Loop: 0
   m_ApplyActiveColorSpace: 1
---- !u!114 &7463495986163517392
+--- !u!114 &8374197187614914342
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1327708465454452514}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dbc5b648c669177419920da23b971ee3, type: 3}
+  m_Script: {fileID: 11500000, guid: 0e4677839bd4a61488b62439241963f8, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: '::'
-  nutritionLeft: 30
-  bornGeneration: 0
-  expireAfterGenerations: 2
-  expireAfterSeconds: 0
+  m_EditorClassIdentifier: Assembly-CSharp::resource
+  nutrition: 30
 --- !u!1 &2919639032396594774
 GameObject:
   m_ObjectHideFlags: 0

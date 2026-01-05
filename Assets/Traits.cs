@@ -137,7 +137,7 @@ public class Traits : MonoBehaviour
     public float GetBaselineEnergyDrain()
     {
         const float minDrain = 0.2f;
-        const float maxExtra = 0.3f;
+        const float maxExtra = 0.4f;
         return minDrain + maxExtra * metabolic_rate;
     }
 
@@ -290,7 +290,7 @@ public class Traits : MonoBehaviour
 
         if (IsDead() && !hasBecomeCarcass)
         {
-            DieIntoCarcass();
+            DieIntoResource();
         }
 
 
@@ -312,11 +312,11 @@ public class Traits : MonoBehaviour
         return Mathf.Clamp01(currentHealth / maxHealth);
     }
 
-    private void DieIntoCarcass()
+    private void DieIntoResource()
     {
         hasBecomeCarcass = true;
 
-        // 1) Hareketi durdur
+        // 1) Hareketi durdur (OrganismBehaviour'i devre dışı bırak)
         OrganismBehaviour ob = GetComponent<OrganismBehaviour>();
         if (ob != null) ob.enabled = false;
 
@@ -325,24 +325,22 @@ public class Traits : MonoBehaviour
         {
             rb.linearVelocity = Vector2.zero;
             rb.angularVelocity = 0f;
+            rb.simulated = false;  // hareketsiz olsun
         }
 
-        // 2) Kurukafa sprite
         SpriteRenderer sr = GetComponent<SpriteRenderer>();
         if (sr != null && corpseSprite != null)
             sr.sprite = corpseSprite;
 
-        // 3) Carcass component ekle + initialize et
-        Carcass c = GetComponent<Carcass>();
-        if (c == null)
-            c = gameObject.AddComponent<Carcass>();
+        // 3) Resource component ekle
+        resource resource = GetComponent<resource>();
+        if (resource == null)
+            resource = gameObject.AddComponent<resource>();
 
-        float nutrition = Mathf.Max(5f, corpseNutrition + currentEnergy * 0.5f);
+        // Resource için besin değerini ayarla (örneğin: organizmanın mevcut enerjisi + fazla bir miktar)
+        resource.nutrition = currentEnergy * 0.5f + 5f;
 
-        // bornGeneration = generationIndex (GA'dan gelen)
-        c.Initialize(generationIndex, nutrition, carcassExpireAfterGenerations);
 
-        //gameObject.tag = "Carcass";
     }
 
 }
