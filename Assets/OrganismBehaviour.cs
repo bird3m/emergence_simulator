@@ -254,6 +254,12 @@ public class OrganismBehaviour : MonoBehaviour
         return closest;
     }
 
+    public Vector3 GetNodeWorldPosition(int x, int y)
+    {
+        return terrain.CellCenterWorld(x, y);
+    }
+
+
     private Vector2 GetNodePosition(PathfindingAstar.GraphNode node)
     {
         string[] p = node.name.Split(',');

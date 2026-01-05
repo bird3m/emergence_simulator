@@ -1,57 +1,83 @@
 using UnityEngine;
 using System.Collections.Generic;
 
+[RequireComponent(typeof(LineRenderer))]
 public class AStarVisualizer : MonoBehaviour
 {
-    public OrganismBehaviour selected;
+    public OrganismBehaviour organism;
     public global::Terrain terrain;
 
-    [Header("Path Visual")]
-    public Color pathColor = new Color(0.2f, 1f, 0.2f, 1f);
-    public float sizeFactor = 0.6f;
-    public bool drawLines = true;
-    public bool drawNodes = true;
+    [Header("Render")]
+    public float lineWidth = 0.12f;
+    public int sortingOrder = 500;
+    public string sortingLayerName = "Default";
 
-    private void OnDrawGizmos()
+    [Header("Z")]
+    public float zOffset = -0.2f; // 2D’de üstte kalsın
+
+    private LineRenderer lr;
+
+    private void Awake()
     {
-        if (selected == null)
+        lr = GetComponent<LineRenderer>();
+
+        // Core settings
+        lr.useWorldSpace = true;
+        lr.startWidth = lineWidth;
+        lr.endWidth = lineWidth;
+        lr.positionCount = 0;
+        lr.numCapVertices = 6;
+        lr.numCornerVertices = 6;
+
+        // Make sure it's visible above sprites
+        lr.sortingLayerName = sortingLayerName;
+        lr.sortingOrder = sortingOrder;
+
+        // MATERIAL: try a few common shaders (Built-in + URP)
+        if (lr.material == null)
+        {
+            Shader sh =
+                Shader.Find("Sprites/Default") ??
+                Shader.Find("Unlit/Color") ??
+                Shader.Find("Universal Render Pipeline/Unlit");
+
+            if (sh != null)
+            {
+                lr.material = new Material(sh);
+            }
+        }
+
+        // Give it a visible color even if material is Unlit/Color
+        lr.startColor = Color.green;
+        lr.endColor = Color.green;
+    }
+
+    private void LateUpdate()
+    {
+        if (organism == null)
+        {
+            lr.positionCount = 0;
             return;
+        }
 
         if (terrain == null)
             terrain = FindObjectOfType<global::Terrain>();
 
-        if (terrain == null)
-            return;
-
-        if (selected.lastPath == null || selected.lastPath.Count == 0)
-            return;
-
-        DrawPath(selected.lastPath);
-    }
-
-    private void DrawPath(List<PathfindingAstar.GraphNode> path)
-    {
-        float s = terrain.cellSize * sizeFactor;
-
-        // Draw nodes
-        if (drawNodes)
+        if (terrain == null || organism.lastPath == null || organism.lastPath.Count == 0)
         {
-            Gizmos.color = pathColor;
-            for (int i = 0; i < path.Count; i++)
-            {
-                Vector3 p = NodeToWorld(path[i]);
-                Gizmos.DrawCube(p, Vector3.one * s);
-            }
+            lr.positionCount = 0;
+            return;
         }
 
-        // Draw connecting lines
-        if (drawLines && path.Count >= 2)
+        List<PathfindingAstar.GraphNode> path = organism.lastPath;
+
+        lr.positionCount = path.Count;
+
+        for (int i = 0; i < path.Count; i++)
         {
-            Gizmos.color = new Color(pathColor.r, pathColor.g, pathColor.b, 0.9f);
-            for (int i = 0; i + 1 < path.Count; i++)
-            {
-                Gizmos.DrawLine(NodeToWorld(path[i]), NodeToWorld(path[i + 1]));
-            }
+            Vector3 w = NodeToWorld(path[i]);
+            w.z = zOffset;
+            lr.SetPosition(i, w);
         }
     }
 
