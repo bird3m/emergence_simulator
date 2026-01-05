@@ -332,32 +332,12 @@ public class OrganismBehaviour : MonoBehaviour
         {
             pathIndex++;
         }
-        
-        if (pathIndex == pathPoints.Count && currentTarget != null)
+        if(pathIndex == pathPoints.Count && currentTarget != null)
         {
-            resource res = currentTarget.GetComponent<resource>();
-            if (res != null)
-            {
-                float nut = res.nutrition;
-                Destroy(currentTarget);
-                traits.Eat(nut);
-                currentTarget = null;
-                return;
-            }
-
-            Carcass carc = currentTarget.GetComponent<Carcass>();
-            if (carc != null)
-            {
-                float eaten = carc.Consume(10f * Time.deltaTime);
-                traits.Eat(eaten);
-
-                if (carc == null || carc.nutritionLeft <= 0f)
-                {
-                    currentTarget = null;
-                }
-            }
+            float nut = currentTarget.GetComponent<resource>().nutrition;
+            Destroy(currentTarget);
+            GetComponent<Traits>().Eat(nut);
         }
-
     }
 
     // ---------------- HELPERS ----------------
@@ -527,26 +507,5 @@ public class OrganismBehaviour : MonoBehaviour
         perceived = Mathf.Clamp(perceived, 1f, 100000f);
         return (uint)Mathf.RoundToInt(perceived);
     }
-
-    private Carcass FindClosestCarcassInRange()
-    {
-        Carcass[] all = FindObjectsOfType<Carcass>();
-        Carcass closest = null;
-        float minDist = border;
-
-        for (int i = 0; i < all.Length; i++)
-        {
-            Carcass c = all[i];
-            float d = Vector2.Distance(transform.position, c.transform.position);
-            if (d < minDist)
-            {
-                minDist = d;
-                closest = c;
-            }
-        }
-
-        return closest;
-    }
-
 
 }
