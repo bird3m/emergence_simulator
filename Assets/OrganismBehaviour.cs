@@ -167,10 +167,7 @@ public class OrganismBehaviour : MonoBehaviour
             if (debugCosts)
             {
                 float s = terrain.GetSlope(cx, cy);
-                Debug.Log(
-                    $"[STEP DEBUG] {lastCellNode.name} -> {currentCell.name} " +
-                    $"slope={s:F2} | PERCEIVED={perceivedStepCost} | REAL={realStepCost:F2} | real/perceived={ratio:F3}"
-                );
+              
             }
 
             // reset for next cell transition
@@ -320,7 +317,7 @@ public class OrganismBehaviour : MonoBehaviour
         if (debugCosts && result.found)
         {
             uint planned = DebugPlannedPathCost();
-            Debug.Log($"[PATH DEBUG] nodes={lastPath.Count} plannedCost={planned}");
+            
         }
 
     }

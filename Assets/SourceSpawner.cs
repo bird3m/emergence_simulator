@@ -85,7 +85,6 @@ public class SourceSpawner : MonoBehaviour
         if (r != null)
             r.nutrition = nutrition;
 
-        Debug.Log($"[SOURCE SPAWNED] time={Time.time:F1} pos={pos} nutrition={nutrition}");
 
     }
 
