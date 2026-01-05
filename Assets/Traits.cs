@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 public class Traits : MonoBehaviour
@@ -55,6 +56,7 @@ public class Traits : MonoBehaviour
 
     public int generationIndex = 0;      // GA her jenerasyonda bunu set edecek
     public int carcassExpireAfterGenerations = 2;
+    public bool hasBecomeCarcass = false;
 
     private void Awake()
     {
@@ -286,6 +288,12 @@ public class Traits : MonoBehaviour
         currentHealth = Mathf.Clamp(currentHealth, 0f, maxHealth);
         currentEnergy = Mathf.Clamp(currentEnergy, 0f, maxEnergy);
 
+        if (IsDead() && !hasBecomeCarcass)
+        {
+            DieIntoCarcass();
+        }
+
+
     }
 
 
@@ -306,7 +314,7 @@ public class Traits : MonoBehaviour
 
     private void DieIntoCarcass()
     {
-        isDead = true;
+        hasBecomeCarcass = true;
 
         // 1) Hareketi durdur
         OrganismBehaviour ob = GetComponent<OrganismBehaviour>();
