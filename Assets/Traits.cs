@@ -323,7 +323,7 @@ public class Traits : MonoBehaviour
         Rigidbody2D rb = GetComponent<Rigidbody2D>();
         if (rb != null)
         {
-            rb.velocity = Vector2.zero;
+            rb.linearVelocity = Vector2.zero;
             rb.angularVelocity = 0f;
         }
 
@@ -342,8 +342,7 @@ public class Traits : MonoBehaviour
         // bornGeneration = generationIndex (GA'dan gelen)
         c.Initialize(generationIndex, nutrition, carcassExpireAfterGenerations);
 
-        // 4) Tag (scavengerlar bulsun)
-        gameObject.tag = "Carcass";
+        //gameObject.tag = "Carcass";
     }
 
 }

@@ -12,6 +12,7 @@ public class Carcass : MonoBehaviour
 
     private float bornTime;
 
+    
     private void Awake()
     {
         bornTime = Time.time;
