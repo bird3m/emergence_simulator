@@ -50,6 +50,12 @@ public class Traits : MonoBehaviour
     public float currentEnergy;
 
 
+    public Sprite corpseSprite;          // kurukafa sprite'ı buraya koy
+    public float corpseNutrition = 30f;  // leşteki başlangıç besin
+
+    public int generationIndex = 0;      // GA her jenerasyonda bunu set edecek
+    public int carcassExpireAfterGenerations = 2;
+
     private void Awake()
     {
         // If chromosome exists and has values, load from it.
@@ -298,4 +304,39 @@ public class Traits : MonoBehaviour
         if (maxHealth <= 1e-4f) return 0f;
         return Mathf.Clamp01(currentHealth / maxHealth);
     }
+
+    private void DieIntoCarcass()
+    {
+        isDead = true;
+
+        // 1) Hareketi durdur
+        OrganismBehaviour ob = GetComponent<OrganismBehaviour>();
+        if (ob != null) ob.enabled = false;
+
+        Rigidbody2D rb = GetComponent<Rigidbody2D>();
+        if (rb != null)
+        {
+            rb.velocity = Vector2.zero;
+            rb.angularVelocity = 0f;
+        }
+
+        // 2) Kurukafa sprite
+        SpriteRenderer sr = GetComponent<SpriteRenderer>();
+        if (sr != null && corpseSprite != null)
+            sr.sprite = corpseSprite;
+
+        // 3) Carcass component ekle + initialize et
+        Carcass c = GetComponent<Carcass>();
+        if (c == null)
+            c = gameObject.AddComponent<Carcass>();
+
+        float nutrition = Mathf.Max(5f, corpseNutrition + currentEnergy * 0.5f);
+
+        // bornGeneration = generationIndex (GA'dan gelen)
+        c.Initialize(generationIndex, nutrition, carcassExpireAfterGenerations);
+
+        // 4) Tag (scavengerlar bulsun)
+        gameObject.tag = "Carcass";
+    }
+
 }

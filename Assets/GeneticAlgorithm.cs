@@ -15,7 +15,7 @@ public class GeneticAlgorithm : MonoBehaviour
     public Transform[] spawnPoints;
 
     [Header("GA Settings")]
-    public int populationSize = 30;
+    public int populationSize = 15;
     public int eliteCount = 4;
     public float crossoverRate = 0.90f;
     public float mutationRate = 0.08f;
@@ -69,6 +69,12 @@ public class GeneticAlgorithm : MonoBehaviour
             DestroySpawned();
             SpawnPopulation();
         }
+
+        foreach (Carcass c in FindObjectsOfType<Carcass>())
+        {
+            c.TickGeneration(generation);
+        }
+
     }
 
     // ----------------------------
