@@ -106,16 +106,22 @@ public class OrganismBehaviour : MonoBehaviour
         FollowPath();
 
         // Fallback: if path ended but still have target, go direct
-        if (currentTarget != null && (pathPoints.Count == 0 || pathIndex >= pathPoints.Count))
+        if (pathIndex == pathPoints.Count && currentTarget != null)
         {
-            Vector2 t = currentTarget.transform.position;
-            transform.position = Vector2.MoveTowards(transform.position, t, speed * Time.deltaTime);
+            var res = currentTarget.GetComponent<resource>();
+            float nut = (res != null) ? res.nutrition : 0f;
 
-            if (Vector2.Distance(transform.position, t) < reachTolerance)
-            {
-                currentTarget = null;
-                SetRandomWanderTarget();
-            }
+            // respawn schedule
+            SourceSpawner spwn = FindObjectOfType<SourceSpawner>();
+            if (spwn != null)
+                spwn.ScheduleRespawn(nut);
+
+            Destroy(currentTarget);
+
+            if (traits != null)
+                traits.Eat(nut);
+
+            currentTarget = null;
         }
 
       float movedDistance = Vector2.Distance((Vector2)transform.position, beforeMove);
@@ -127,11 +133,11 @@ public class OrganismBehaviour : MonoBehaviour
         float mult = 1f;
         if (slope > 0f)
         {
-            mult = 1f + slope01 * uphillExtra; // uphill: daha çok yak
+            mult = 1f + slope01 * uphillExtra; 
         }
         else if (slope < 0f)
         {
-            mult = 1f - slope01 * downhillDiscount; // downhill: daha az yak
+            mult = 1f - slope01 * downhillDiscount; 
         }
 
         mult = Mathf.Max(minEnergyMultiplier, mult);
