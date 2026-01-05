@@ -158,7 +158,8 @@ public class OrganismBehaviour : MonoBehaviour
 
         if (nodeByName.TryGetValue(key, out PathfindingAstar.GraphNode targetNode))
         {
-            node.links.Add(new PathfindingAstar.Link(1, targetNode));
+            uint cost = PerceivedStepCost(targetX, targetY);
+            node.links.Add(new PathfindingAstar.Link(cost, targetNode));
         }
     }
 
@@ -182,9 +183,26 @@ public class OrganismBehaviour : MonoBehaviour
         for (int i = 0; i < allNodes.Count; i++)
         {
             PathfindingAstar.GraphNode n = allNodes[i];
-            float dist = Vector2.Distance(GetNodePosition(n), destination);
-            heuristic[n] = (uint)(dist * 10f); // scale to reduce truncation to 0
+
+            ParseNodeXY(n, out int nx, out int ny);
+
+            // base distance (in cells)
+            Vector2 np = GetNodePosition(n);
+            float dist = Vector2.Distance(np, destination); // world distance, OK
+
+            // use slope at node as a cheap proxy for what's ahead
+            float s = terrain.GetSlope(nx, ny);
+            float t = NormalizedAbsSlope(s);
+            float bias = SlopeBiasFactor(s);
+
+            // If on uphill cell and organism has good bias, h becomes larger (more conservative)
+            // If organism is wrong, h is too optimistic/pessimistic and A* chooses worse routes.
+            float h = dist * 10f * (1f + ( (s > 0f) ? (0.8f * t) : (0.2f * t) )) * (1f + bias);
+
+            h = Mathf.Clamp(h, 1f, 100000f);
+            heuristic[n] = (uint)Mathf.RoundToInt(h);
         }
+
 
         // New A*: SolveAstar(startNode, goalNode, heuristic)
         PathfindingAstar.AStarResult result = PathfindingAstar.SolveAstar(startNode, goalNode, heuristic);
