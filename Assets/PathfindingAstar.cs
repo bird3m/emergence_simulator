@@ -2,8 +2,28 @@ using UnityEngine;
 using System;
 using System.Collections.Generic;
 
+[Serializable]
+public class AStarDebugData
+{
+    public HashSet<PathfindingAstar.GraphNode> open = new HashSet<PathfindingAstar.GraphNode>();
+    public HashSet<PathfindingAstar.GraphNode> closed = new HashSet<PathfindingAstar.GraphNode>();
+    public List<PathfindingAstar.GraphNode> finalPath = new List<PathfindingAstar.GraphNode>();
+
+    public void Clear()
+    {
+        open.Clear();
+        closed.Clear();
+        finalPath.Clear();
+    }
+}
+
 public class PathfindingAstar : MonoBehaviour
 {
+    // Backward-compatible global debug (optional use)
+    public static HashSet<GraphNode> debugOpen = new HashSet<GraphNode>();
+    public static HashSet<GraphNode> debugClosed = new HashSet<GraphNode>();
+    public static List<GraphNode> debugFinalPath = new List<GraphNode>();
+
     // -------------------- Graph Structures --------------------
 
     [Serializable]
@@ -76,11 +96,6 @@ public class PathfindingAstar : MonoBehaviour
         public bool Empty()
         {
             return data.Count == 0;
-        }
-
-        public int Size()
-        {
-            return data.Count;
         }
 
         public T Top()
@@ -164,12 +179,33 @@ public class PathfindingAstar : MonoBehaviour
 
     // -------------------- A* (NO string path) --------------------
 
+    // Backward-compatible overload (no per-agent debug)
     public static AStarResult SolveAstar(
         GraphNode start,
         GraphNode goal,
         Dictionary<GraphNode, uint> heuristic
     )
     {
+        return SolveAstar(start, goal, heuristic, null);
+    }
+
+    // Per-agent debug version (recommended for many organisms)
+    public static AStarResult SolveAstar(
+        GraphNode start,
+        GraphNode goal,
+        Dictionary<GraphNode, uint> heuristic,
+        AStarDebugData debug
+    )
+    {
+        // Clear global debug always (optional legacy)
+        debugOpen.Clear();
+        debugClosed.Clear();
+        debugFinalPath.Clear();
+
+        // Clear per-agent debug if provided
+        if (debug != null)
+            debug.Clear();
+
         AStarResult result = new AStarResult();
         result.found = false;
         result.totalCost = 0;
@@ -181,18 +217,17 @@ public class PathfindingAstar : MonoBehaviour
         if (heuristic == null)
             throw new Exception("Heuristic dictionary is null.");
 
-        // Min-heap ordered by f = g + h
-        MinHeap<TreeNode> open = new MinHeap<TreeNode>(new CompareNode_Astar());
-
-        HashSet<GraphNode> closed = new HashSet<GraphNode>();
-        Dictionary<GraphNode, GraphNode> cameFrom = new Dictionary<GraphNode, GraphNode>();
-        Dictionary<GraphNode, uint> gScore = new Dictionary<GraphNode, uint>();
-
         if (!heuristic.ContainsKey(start))
             throw new Exception("Heuristic missing for start node: " + start.name);
 
         if (!heuristic.ContainsKey(goal))
             throw new Exception("Heuristic missing for goal node: " + goal.name);
+
+        MinHeap<TreeNode> open = new MinHeap<TreeNode>(new CompareNode_Astar());
+
+        HashSet<GraphNode> closed = new HashSet<GraphNode>();
+        Dictionary<GraphNode, GraphNode> cameFrom = new Dictionary<GraphNode, GraphNode>();
+        Dictionary<GraphNode, uint> gScore = new Dictionary<GraphNode, uint>();
 
         gScore[start] = 0;
 
@@ -203,19 +238,46 @@ public class PathfindingAstar : MonoBehaviour
 
         open.Push(root);
 
+        // Debug: start is in open
+        debugOpen.Add(start);
+        if (debug != null) debug.open.Add(start);
+
         while (!open.Empty())
         {
             TreeNode currentTN = open.ExtractTop();
             GraphNode current = currentTN.node;
 
+            // If we already processed it, skip (avoid duplicate heap entries)
             if (closed.Contains(current))
                 continue;
 
+            // Debug move: open -> closed
+            debugOpen.Remove(current);
+            debugClosed.Add(current);
+
+            if (debug != null)
+            {
+                debug.open.Remove(current);
+                debug.closed.Add(current);
+            }
+
+            // Goal
             if (current == goal)
             {
                 result.found = true;
                 result.totalCost = gScore[current];
                 result.path = ReconstructPath(cameFrom, current);
+
+                // Debug final path
+                debugFinalPath.Clear();
+                debugFinalPath.AddRange(result.path);
+
+                if (debug != null)
+                {
+                    debug.finalPath.Clear();
+                    debug.finalPath.AddRange(result.path);
+                }
+
                 return result;
             }
 
@@ -232,10 +294,8 @@ public class PathfindingAstar : MonoBehaviour
                 if (closed.Contains(neighbor))
                     continue;
 
-                if (!gScore.ContainsKey(current))
-                    gScore[current] = uint.MaxValue;
-
-                uint tentativeG = gScore[current] + l.cost;
+                uint currentG = gScore[current];
+                uint tentativeG = currentG + l.cost;
 
                 bool better = !gScore.ContainsKey(neighbor) || tentativeG < gScore[neighbor];
 
@@ -253,6 +313,10 @@ public class PathfindingAstar : MonoBehaviour
                     tn.hCost = heuristic[neighbor];
 
                     open.Push(tn);
+
+                    // Debug: neighbor is in open
+                    debugOpen.Add(neighbor);
+                    if (debug != null) debug.open.Add(neighbor);
                 }
             }
         }
