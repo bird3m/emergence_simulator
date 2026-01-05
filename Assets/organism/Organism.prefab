@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 7683240624622440650}
   - component: {fileID: 3803771037933458176}
   - component: {fileID: 7737531533977272853}
+  - component: {fileID: 3788187831198522187}
   m_Layer: 0
   m_Name: Organism
   m_TagString: Untagged
@@ -140,3 +141,15 @@ MonoBehaviour:
   MoveEnergyCostPerUnit: 0
   Boldness: 0
   maxHeuristicBias: 0.1
+--- !u!114 &3788187831198522187
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1327708465454452514}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78121bab8e222dc4e85d3949da224c88, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: '::'
