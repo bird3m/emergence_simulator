@@ -3,14 +3,14 @@ using System.Collections.Generic;
 
 public class OrganismBehaviour : MonoBehaviour
 {
-    [Header("Menzil ve Hız")]
+    [Header("Settings")]
     public float border = 10f; 
     public float reachTolerance = 0.5f;
     public float speed = 5f;            
     public float wanderRadius = 8f; 
 
-    // Referanslar
-    private Terrain terrain; // Senin yeni Terrain scriptin
+    // References
+    private Terrain terrain; 
     private List<PathfindingAstar.GraphNode> allNodes = new List<PathfindingAstar.GraphNode>(); 
     private List<Vector2> pathPoints = new List<Vector2>(); 
     private int pathIndex = 0;
@@ -18,76 +18,27 @@ public class OrganismBehaviour : MonoBehaviour
 
     private void Start()
     {
-        // 1. ADIM: Sahnedeki Terrain scriptini bul
+        // Find terrain in the scene
         terrain = FindObjectOfType<Terrain>();
 
         if (terrain != null)
         {
-            // 2. ADIM: Terrain bilgilerine göre Grid'i oluştur
+            // Build the grid system
             InitializeGrid();
         }
         else
         {
-            Debug.LogError("Lordum, sahnede Terrain bulunamadı!");
+            Debug.LogError("Terrain not found in the scene!");
         }
 
         SetRandomWanderTarget();
-    }
-
-    private void InitializeGrid()
-    {
-        allNodes.Clear();
-
-        // Terrain scriptindeki genişlik ve yüksekliği kullanıyoruz
-        for (int x = 0; x < terrain.width; x++)
-        {
-            for (int y = 0; y < terrain.height; y++)
-            {
-                PathfindingAstar.GraphNode node = new PathfindingAstar.GraphNode();
-                // Koordinatları "x,y" olarak isimde sakla
-                node.name = x + "," + y; 
-                allNodes.Add(node);
-            }
-        }
-
-        // Düğümleri birbirine bağla
-        ConnectNodes();
-    }
-
-    private void ConnectNodes()
-    {
-        foreach (var node in allNodes)
-        {
-            string[] parcalar = node.name.Split(','); 
-            int x = int.Parse(parcalar[0]); 
-            int y = int.Parse(parcalar[1]); 
-
-            // Komşuları sınır kontrolü yaparak bağla (Sağ, Sol, Üst, Alt)
-            AddLinkIfValid(node, x + 1, y);
-            AddLinkIfValid(node, x - 1, y);
-            AddLinkIfValid(node, x, y + 1);
-            AddLinkIfValid(node, x, y - 1);
-        }
-    }
-
-    private void AddLinkIfValid(PathfindingAstar.GraphNode node, int tx, int ty)
-    {
-        if (tx >= 0 && tx < terrain.width && ty >= 0 && ty < terrain.height)
-        {
-            var target = allNodes.Find(n => n.name == tx + "," + ty);
-            if (target != null)
-            {
-                // Her adımın maliyeti 1 birim
-                node.links.Add(new PathfindingAstar.Link(1, target));
-            }
-        }
     }
 
     private void Update()
     {
         if (allNodes.Count == 0) return;
 
-        GameObject closestSource = findClosestSource();
+        GameObject closestSource = FindClosestSource();
 
         if (closestSource != null)
         {
@@ -106,34 +57,105 @@ public class OrganismBehaviour : MonoBehaviour
         FollowPath();
     }
 
+    // --- GRID SETUP ---
+
+    private void InitializeGrid()
+    {
+        allNodes.Clear();
+
+        // Create nodes for each cell based on terrain dimensions
+        for (int x = 0; x < terrain.width; x++)
+        {
+            for (int y = 0; y < terrain.height; y++)
+            {
+                PathfindingAstar.GraphNode node = new PathfindingAstar.GraphNode();
+                // Store coordinates as "x,y" for parsing later
+                node.name = x + "," + y; 
+                allNodes.Add(node);
+            }
+        }
+
+        ConnectNodes();
+    }
+
+    private void ConnectNodes()
+    {
+        foreach (PathfindingAstar.GraphNode node in allNodes)
+        {
+            // Split the name string by comma
+            string[] parts = node.name.Split(','); 
+            int x = int.Parse(parts[0]); 
+            int y = int.Parse(parts[1]); 
+
+            // Check and link neighbors (Right, Left, Up, Down)
+            AddLinkIfValid(node, x + 1, y); 
+            AddLinkIfValid(node, x - 1, y); 
+            AddLinkIfValid(node, x, y + 1); 
+            AddLinkIfValid(node, x, y - 1); 
+        }
+    }
+
+    private void AddLinkIfValid(PathfindingAstar.GraphNode node, int targetX, int targetY)
+    {
+        if (targetX >= 0 && targetX < terrain.width && targetY >= 0 && targetY < terrain.height)
+        {
+            PathfindingAstar.GraphNode targetNode = null;
+            // Find the node with the matching coordinate name
+            foreach (PathfindingAstar.GraphNode n in allNodes)
+            {
+                if (n.name == targetX + "," + targetY)
+                {
+                    targetNode = n;
+                    break;
+                }
+            }
+
+            if (targetNode != null)
+            {
+                node.links.Add(new PathfindingAstar.Link(1, targetNode));
+            }
+        }
+    }
+
+    // --- PATHFINDING & MOVEMENT ---
+
     private void CalculateAStarPath(Vector2 destination)
     {
         pathPoints.Clear();
         pathIndex = 0;
 
-        var startNode = FindClosestNode((Vector2)transform.position);
-        var goalNode = FindClosestNode(destination);
+        PathfindingAstar.GraphNode startNode = FindClosestNode((Vector2)transform.position);
+        PathfindingAstar.GraphNode goalNode = FindClosestNode(destination);
 
         if (startNode == null || goalNode == null) return;
 
-        // Sezgisel (Heuristic) hesaplama
+        // Calculate heuristic for each node
         Dictionary<string, uint> heuristic = new Dictionary<string, uint>();
-        foreach (var n in allNodes)
+        foreach (PathfindingAstar.GraphNode n in allNodes)
         {
-            float d = Vector2.Distance(GetNodePosition(n), destination);
-            heuristic[n.name] = (uint)d;
+            float dist = Vector2.Distance(GetNodePosition(n), destination);
+            heuristic[n.name] = (uint)dist;
         }
 
+        // Call the optimized A* (Returns: endNode, pathStr, totalCost)
         var result = PathfindingAstar.AStar.SolveAstar(startNode, goalNode.name, heuristic);
 
-        if (result.node != null)
+        // FIX: Use 'result.endNode' instead of 'result.node'
+        if (result.endNode != null)
         {
-            // Path string'ini parçala ve yol noktalarını ekle
-            string[] names = result.path.Split(new string[] { ", " }, System.StringSplitOptions.None);
-            foreach (string name in names)
+            // FIX: Use 'result.pathStr' instead of 'result.path'
+            string[] nodeNames = result.pathStr.Split(new string[] { ", " }, System.StringSplitOptions.None);
+            
+            foreach (string name in nodeNames)
             {
-                var found = allNodes.Find(n => n.name == name);
-                if (found != null) pathPoints.Add(GetNodePosition(found));
+                foreach (PathfindingAstar.GraphNode found in allNodes)
+                {
+                    if (found.name == name)
+                    {
+                        pathPoints.Add(GetNodePosition(found));
+                        break;
+                    }
+                }
             }
         }
     }
@@ -151,15 +173,21 @@ public class OrganismBehaviour : MonoBehaviour
         }
     }
 
+    // --- HELPERS ---
+
     private PathfindingAstar.GraphNode FindClosestNode(Vector2 pos)
     {
         PathfindingAstar.GraphNode closest = null;
-        float min = float.MaxValue;
+        float minDistance = float.MaxValue;
 
-        foreach (var node in allNodes)
+        foreach (PathfindingAstar.GraphNode node in allNodes)
         {
-            float d = Vector2.Distance(GetNodePosition(node), pos);
-            if (d < min) { min = d; closest = node; }
+            float dist = Vector2.Distance(GetNodePosition(node), pos);
+            if (dist < minDistance)
+            {
+                minDistance = dist;
+                closest = node;
+            }
         }
         return closest;
     }
@@ -170,20 +198,25 @@ public class OrganismBehaviour : MonoBehaviour
         int x = int.Parse(p[0]);
         int y = int.Parse(p[1]);
         
-        // Terrain scriptindeki CellCenterWorld fonksiyonunu kullanarak gerçek dünya koordinatını alıyoruz
+        // Convert grid coords to world position using your Terrain script
         Vector3 worldPos = terrain.CellCenterWorld(x, y);
         return new Vector2(worldPos.x, worldPos.y);
     }
 
-    private GameObject findClosestSource()
+    private GameObject FindClosestSource()
     {
         GameObject[] sources = GameObject.FindGameObjectsWithTag("Source");
         GameObject closest = null;
         float minDist = border;
-        foreach (var s in sources)
+
+        foreach (GameObject s in sources)
         {
             float d = Vector2.Distance(transform.position, s.transform.position);
-            if (d < minDist) { minDist = d; closest = s; }
+            if (d < minDist)
+            {
+                minDist = d;
+                closest = s;
+            }
         }
         return closest;
     }
@@ -191,12 +224,16 @@ public class OrganismBehaviour : MonoBehaviour
     private void SetRandomWanderTarget()
     {
         pathPoints.Clear();
-        pathPoints.Add((Vector2)transform.position + Random.insideUnitCircle * wanderRadius);
+        Vector2 randomPoint = (Vector2)transform.position + Random.insideUnitCircle * wanderRadius;
+        pathPoints.Add(randomPoint);
         pathIndex = 0;
     }
 
     private void Wander()
     {
-        if (pathPoints.Count == 0 || pathIndex >= pathPoints.Count) SetRandomWanderTarget();
+        if (pathPoints.Count == 0 || pathIndex >= pathPoints.Count)
+        {
+            SetRandomWanderTarget();
+        }
     }
 }

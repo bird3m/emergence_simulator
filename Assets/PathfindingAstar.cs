@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 public class PathfindingAstar : MonoBehaviour
 {
-    //Priority queue implementation
+    // Priority queue implementation for efficient node selection
     public class MinHeap<T>
     {
         private List<T> data = new List<T>();
@@ -20,88 +20,62 @@ public class PathfindingAstar : MonoBehaviour
             return data.Count == 0;
         }
 
-        public int Size()
-        {
-            return data.Count;
-        }
-
-        public T Top()
-        {
-            if (data.Count == 0)
-                throw new InvalidOperationException("Heap is empty");
-            return data[0];
-        }
-
         public void Push(T item)
         {
             data.Add(item);
             SiftUp(data.Count - 1);
         }
 
-        public void Pop()
-        {
-            if (data.Count == 0)
-                throw new InvalidOperationException("Heap is empty");
-
-            int last = data.Count - 1;
-            data[0] = data[last];
-            data.RemoveAt(last);
-
-            if (data.Count > 0)
-                SiftDown(0);
-        }
-
         public T ExtractTop()
         {
-            T t = Top();
-            Pop();
-            return t;
+            if (data.Count == 0) throw new InvalidOperationException("Heap is empty");
+            T topItem = data[0];
+            int lastIndex = data.Count - 1;
+            data[0] = data[lastIndex];
+            data.RemoveAt(lastIndex);
+
+            if (data.Count > 0) SiftDown(0);
+            return topItem;
         }
 
-        private void SiftUp(int i)
+        private void SiftUp(int index)
         {
-            while (i > 0)
+            while (index > 0)
             {
-                int parent = (i - 1) / 2;
-
-                // if parent <= child, ok
-                if (comparer.Compare(data[parent], data[i]) <= 0)
-                    break;
-
-                Swap(parent, i);
-                i = parent;
+                int parentIndex = (index - 1) / 2;
+                if (comparer.Compare(data[parentIndex], data[index]) <= 0) break;
+                Swap(parentIndex, index);
+                index = parentIndex;
             }
         }
 
-        private void SiftDown(int i)
+        private void SiftDown(int index)
         {
-            int n = data.Count;
-
+            int count = data.Count;
             while (true)
             {
-                int left = 2 * i + 1;
-                int right = 2 * i + 2;
-                int best = i;
+                int leftChild = 2 * index + 1;
+                int rightChild = 2 * index + 2;
+                int bestIndex = index;
 
-                if (left < n && comparer.Compare(data[left], data[best]) < 0)
-                    best = left;
+                if (leftChild < count && comparer.Compare(data[leftChild], data[bestIndex]) < 0)
+                    bestIndex = leftChild;
 
-                if (right < n && comparer.Compare(data[right], data[best]) < 0)
-                    best = right;
+                if (rightChild < count && comparer.Compare(data[rightChild], data[bestIndex]) < 0)
+                    bestIndex = rightChild;
 
-                if (best == i)
-                    break;
+                if (bestIndex == index) break;
 
-                Swap(i, best);
-                i = best;
+                Swap(index, bestIndex);
+                index = bestIndex;
             }
         }
 
         private void Swap(int a, int b)
         {
-            T tmp = data[a];
+            T temp = data[a];
             data[a] = data[b];
-            data[b] = tmp;
+            data[b] = temp;
         }
     }
 
@@ -123,16 +97,23 @@ public class PathfindingAstar : MonoBehaviour
         }
     }
 
+    // Node structure for the search tree
     public class TreeNode
     {
-        public GraphNode node;   // current node
-        public string path;      // full path so far
-        public uint cost;        // g(n)
-        public uint hCost;       // h(n)
-        public uint depth;       // optional
+        public GraphNode node;   
+        public TreeNode parent;  // Pointer to the previous node to reconstruct the path
+        public uint cost;        // g(n): cost from start to current node
+        public uint hCost;       // h(n): estimated cost to goal
     }
 
-    //Comparator
+    // Result structure to fix the CS1061 errors in OrganismBehaviour
+    public struct AStarResult
+    {
+        public GraphNode endNode; 
+        public string pathStr;    
+        public uint totalCost;
+    }
+
     public class CompareNode_Astar : IComparer<TreeNode>
     {
         public int Compare(TreeNode a, TreeNode b)
@@ -140,88 +121,94 @@ public class PathfindingAstar : MonoBehaviour
             uint f1 = a.cost + a.hCost;
             uint f2 = b.cost + b.hCost;
 
-            if (f1 < f2)
-                return -1;
-            if (f1 > f2) 
-                return 1;
-
+            if (f1 < f2) return -1;
+            if (f1 > f2) return 1;
             return 0;
         }
     }
+
     public static class AStar
     {
-        public static TreeNode SolveAstar(GraphNode graph, string goal, Dictionary<string, uint> heuristic)
+        public static AStarResult SolveAstar(GraphNode startGraphNode, string goalName, Dictionary<string, uint> heuristic)
         {
-            Debug.Log("A* Search");
+            Debug.Log("Starting A* Search...");
 
-            TreeNode ans = new TreeNode();
-            ans.node = null;
-            ans.cost = 0;
-            ans.hCost = 0;
-            ans.path = "NO SOLUTION";
-            ans.depth = 0;
+            AStarResult result = new AStarResult();
+            result.endNode = null;
+            result.pathStr = "NO SOLUTION";
+            result.totalCost = 0;
 
-            uint expandedNodes = 0;
-            HashSet<GraphNode> visited = new HashSet<GraphNode>();
+            uint expandedNodesCount = 0;
+            // Dictionary to keep track of the minimum cost to reach a node
+            Dictionary<GraphNode, uint> costTracker = new Dictionary<GraphNode, uint>();
+            MinHeap<TreeNode> fringe = new MinHeap<TreeNode>(new CompareNode_Astar());
 
-            if (graph != null)
+            if (startGraphNode != null)
             {
                 TreeNode root = new TreeNode();
-                root.node = graph;
-                root.path = graph.name;
+                root.node = startGraphNode;
+                root.parent = null;
                 root.cost = 0;
+                root.hCost = heuristic.ContainsKey(root.node.name) ? heuristic[root.node.name] : 0;
 
-                root.hCost = heuristic[root.node.name];
-
-            
-                root.depth = 0;
-
-                MinHeap<TreeNode> fringe = new MinHeap<TreeNode>(new CompareNode_Astar());
                 fringe.Push(root);
+                costTracker[startGraphNode] = 0;
 
                 while (!fringe.Empty())
                 {
-                    TreeNode stateToExpand = fringe.ExtractTop();
+                    TreeNode currentTreeNode = fringe.ExtractTop();
+                    expandedNodesCount++;
 
-                    if (!visited.Contains(stateToExpand.node))
+                    // Goal check
+                    if (currentTreeNode.node.name == goalName)
                     {
-                        visited.Add(stateToExpand.node);
-                        expandedNodes++;
+                        result.endNode = currentTreeNode.node;
+                        result.pathStr = ReconstructPathString(currentTreeNode);
+                        result.totalCost = currentTreeNode.cost;
+                        break;
+                    }
 
-                        if (stateToExpand.node.name == goal)
+                    // Expand neighbors
+                    for (int i = 0; i < currentTreeNode.node.links.Count; i++)
+                    {
+                        Link connection = currentTreeNode.node.links[i];
+                        uint newMovementCost = currentTreeNode.cost + connection.cost;
+
+                        // Only add to fringe if we found a cheaper way to reach this node
+                        if (!costTracker.ContainsKey(connection.node) || newMovementCost < costTracker[connection.node])
                         {
-                            ans.node = stateToExpand.node;
-                            ans.cost = stateToExpand.cost;
-                            ans.path = stateToExpand.path;
-                            break;
-                        }
-                        else
-                        {
-                            for (int i = 0; i < stateToExpand.node.links.Count; i++)
-                            {
-                                Link link = stateToExpand.node.links[i];
+                            costTracker[connection.node] = newMovementCost;
 
-                                TreeNode state = new TreeNode();
-                                state.node = link.node;
-                                state.path = stateToExpand.path + ", " + link.node.name;
-                                state.cost = link.cost + stateToExpand.cost;
+                            TreeNode nextNode = new TreeNode();
+                            nextNode.node = connection.node;
+                            nextNode.parent = currentTreeNode;
+                            nextNode.cost = newMovementCost;
+                            nextNode.hCost = heuristic.ContainsKey(nextNode.node.name) ? heuristic[nextNode.node.name] : 0;
 
-                                uint hn = 0;
-                                if (heuristic != null && heuristic.ContainsKey(state.node.name))
-                                    hn = heuristic[state.node.name];
-
-                                state.hCost = hn;
-                                state.depth = stateToExpand.depth + 1;
-
-                                fringe.Push(state);
-                            }
+                            fringe.Push(nextNode);
                         }
                     }
                 }
             }
 
-            Debug.Log("Expanded nodes: " + expandedNodes);
-            return ans;
+            Debug.Log("Nodes Expanded: " + expandedNodesCount);
+            return result;
+        }
+
+        // Helper function to build the path string by backtracking through parents
+        private static string ReconstructPathString(TreeNode leafNode)
+        {
+            List<string> pathList = new List<string>();
+            TreeNode current = leafNode;
+
+            while (current != null)
+            {
+                pathList.Add(current.node.name);
+                current = current.parent;
+            }
+
+            pathList.Reverse();
+            return string.Join(", ", pathList);
         }
     }
 }
