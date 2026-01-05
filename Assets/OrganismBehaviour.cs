@@ -41,6 +41,14 @@ public class OrganismBehaviour : MonoBehaviour
     private Vector2 lastPos;
 
 
+    [Header("Debug")]
+    public bool debugCosts = true;
+    public float debugLogChance = 0.02f; // %2 of frames
+
+    private PathfindingAstar.GraphNode lastCellNode = null;
+    private float accumulatedRealEffort = 0f;
+
+
     private void Start()
     {
         lastPos = transform.position;
@@ -55,7 +63,8 @@ public class OrganismBehaviour : MonoBehaviour
 
         InitializeGrid();
         SetRandomWanderTarget();
-
+        lastCellNode = FindClosestNode((Vector2)transform.position);
+        accumulatedRealEffort = 0f;
     }
 
     private void Update()
@@ -114,10 +123,10 @@ public class OrganismBehaviour : MonoBehaviour
             }
         }
 
-      float movedDistance = Vector2.Distance((Vector2)transform.position, beforeMove);
+        float movedDistance = Vector2.Distance((Vector2)transform.position, beforeMove);
 
-      float slope = CurrentCellSlope(); // + uphill, - downhill
-      float slope01 = Mathf.Clamp01(Mathf.Abs(slope) / Mathf.Max(0.0001f, maxAbsSlopeForNorm));
+        float slope = CurrentCellSlope(); // + uphill, - downhill
+        float slope01 = Mathf.Clamp01(Mathf.Abs(slope) / Mathf.Max(0.0001f, terrain.maxAbsSlope));
 
 
         float mult = 1f;
@@ -135,7 +144,55 @@ public class OrganismBehaviour : MonoBehaviour
         float effort = movedDistance * mult;
         traits.UpdateVitals(effort, Time.deltaTime);
 
-    
+        accumulatedRealEffort += effort;
+
+        PathfindingAstar.GraphNode currentCell = FindClosestNode((Vector2)transform.position);
+
+        if (currentCell != null && lastCellNode != null && currentCell != lastCellNode)
+        {
+            // We entered a new cell: compare REAL vs PERCEIVED for this step
+            ParseNodeXY(currentCell, out int cx, out int cy);
+
+            uint perceivedStepCost = PerceivedStepCost(cx, cy);
+            float realStepCost = accumulatedRealEffort;
+
+            float ratio = (perceivedStepCost > 0) ? (realStepCost / perceivedStepCost) : 0f;
+
+            if (debugCosts)
+            {
+                float s = terrain.GetSlope(cx, cy);
+                Debug.Log(
+                    $"[STEP DEBUG] {lastCellNode.name} -> {currentCell.name} " +
+                    $"slope={s:F2} | PERCEIVED={perceivedStepCost} | REAL={realStepCost:F2} | real/perceived={ratio:F3}"
+                );
+            }
+
+            // reset for next cell transition
+            accumulatedRealEffort = 0f;
+            lastCellNode = currentCell;
+        }
+        else if (currentCell != null && lastCellNode == null)
+        {
+            lastCellNode = currentCell;
+            accumulatedRealEffort = 0f;
+        }
+
+    }
+
+
+    private uint DebugPlannedPathCost()
+    {
+        if (lastPath == null || lastPath.Count < 2) return 0;
+
+        uint sum = 0;
+
+        for (int i = 1; i < lastPath.Count; i++)
+        {
+            ParseNodeXY(lastPath[i], out int x, out int y);
+            sum += PerceivedStepCost(x, y);
+        }
+
+        return sum;
     }
 
     // ---------------- GRID SETUP ----------------
@@ -165,6 +222,7 @@ public class OrganismBehaviour : MonoBehaviour
         for (int i = 0; i < allNodes.Count; i++)
         {
             PathfindingAstar.GraphNode node = allNodes[i];
+            node.links.Clear();
 
             string[] parts = node.name.Split(',');
             int x = int.Parse(parts[0]);
@@ -252,10 +310,12 @@ public class OrganismBehaviour : MonoBehaviour
         }
 
 
-     
-        Debug.Log("PATH COUNT: " + lastPath.Count);
-
-
+    
+        if (debugCosts && result.found)
+        {
+            uint planned = DebugPlannedPathCost();
+            Debug.Log($"[PATH DEBUG] nodes={lastPath.Count} plannedCost={planned}");
+        }
 
     }
 

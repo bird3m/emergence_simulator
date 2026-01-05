@@ -362,8 +362,8 @@ MonoBehaviour:
   - 0
   - 0
   - 0
-  - -1
-  - 1
+  - 0.1
+  - -0.1
   - 0
   - 0
   EffectiveMass: 0
@@ -391,10 +391,16 @@ MonoBehaviour:
   reachTolerance: 0.5
   speed: 5
   wanderRadius: 8
+  uphillExtra: 1.5
+  downhillDiscount: 0.5
+  maxAbsSlopeForNorm: 1
+  minEnergyMultiplier: 0.1
   repathIfTargetMoved: 1
   repathMoveThreshold: 1
   lastPath: []
   traits: {fileID: 7737531533977272853}
+  debugCosts: 1
+  debugLogChance: 0.02
 --- !u!114 &3090274887604956481
 MonoBehaviour:
   m_ObjectHideFlags: 0

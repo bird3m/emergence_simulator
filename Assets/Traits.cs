@@ -67,7 +67,7 @@ public class Traits : MonoBehaviour
     /// </summary>
     public void ApplyChromosomeAndRecompute()
     {
-        if (chromosm != null && chromosm.Length >= 8)
+        if (chromosm != null && chromosm.Length >= 9)
         {
             LoadFromChromosome();
         }

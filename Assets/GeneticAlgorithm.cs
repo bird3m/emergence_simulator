@@ -95,8 +95,8 @@ public class GeneticAlgorithm : MonoBehaviour
             }
 
             // Assign chromosome
-            t.chromosm = new float[9];
-            Array.Copy(population[i].chrom, t.chromosm, 9);
+            t.chromosm = new float[population[i].chrom.Length];
+            Array.Copy(population[i].chrom, t.chromosm, population[i].chrom.Length);
 
             // IMPORTANT: recompute after GA sets chromosm
             t.ApplyChromosomeAndRecompute();
@@ -245,7 +245,7 @@ public class GeneticAlgorithm : MonoBehaviour
 
     private float[] RandomChromosome()
     {
-        float[] c = new float[8];
+        float[] c = new float[9];
 
         // [0..1]
         c[0] = Rand01(); // mass
@@ -255,14 +255,16 @@ public class GeneticAlgorithm : MonoBehaviour
         c[4] = Rand01(); // risk_aversion
 
         // heuristic [-1..1]
-        c[5] = UnityEngine.Random.Range(-1f, 1f);
+        c[5] = UnityEngine.Random.Range(-1f, 1f); // upperSlopeHeuristic
+        c[6] = UnityEngine.Random.Range(-1f, 1f); // lowerSlopeHeuristic
 
         // [0..1]
-        c[6] = Rand01(); // danger_weight
-        c[7] = Rand01(); // camouflage
+        c[7] = Rand01(); // danger_weight
+        c[8] = Rand01(); // camouflage
 
         return c;
     }
+
 
     private float ClampGene(int index, float value)
     {
