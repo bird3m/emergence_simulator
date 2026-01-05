@@ -280,8 +280,6 @@ public class Traits : MonoBehaviour
         currentHealth = Mathf.Clamp(currentHealth, 0f, maxHealth);
         currentEnergy = Mathf.Clamp(currentEnergy, 0f, maxEnergy);
 
-        if(IsDead())
-            Destroy(gameObject);
     }
 
 
