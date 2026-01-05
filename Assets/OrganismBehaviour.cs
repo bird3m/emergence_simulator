@@ -25,9 +25,14 @@ public class OrganismBehaviour : MonoBehaviour
     // Target lock
     private GameObject currentTarget = null;
     private Vector2 lastPlannedTargetPos;
+    Traits traits;
+    private Vector2 lastPos;
+
 
     private void Start()
     {
+        lastPos = transform.position;
+
         terrain = FindObjectOfType<global::Terrain>();
         if (terrain == null)
         {
@@ -38,11 +43,13 @@ public class OrganismBehaviour : MonoBehaviour
 
         InitializeGrid();
         SetRandomWanderTarget();
+        traits = GetComponent<Traits>();
     }
 
     private void Update()
     {
         if (allNodes.Count == 0) return;
+        Vector2 beforeMove = transform.position;
 
         // Acquire target ONLY if none
         if (currentTarget == null)
@@ -94,6 +101,9 @@ public class OrganismBehaviour : MonoBehaviour
                 SetRandomWanderTarget();
             }
         }
+
+        float movedDistance = Vector2.Distance((Vector2)transform.position, beforeMove);
+        traits.UpdateVitals(movedDistance, Time.deltaTime);
     }
 
     // ---------------- GRID SETUP ----------------
@@ -196,6 +206,12 @@ public class OrganismBehaviour : MonoBehaviour
         if (Vector2.Distance(transform.position, target) < reachTolerance)
         {
             pathIndex++;
+        }
+        if(pathIndex == pathPoints.Count && currentTarget != null)
+        {
+            float nut = currentTarget.GetComponent<resource>().nutrition;
+            Destroy(currentTarget);
+            GetComponent<Traits>().Eat(nut);
         }
     }
 

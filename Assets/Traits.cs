@@ -46,6 +46,10 @@ public class Traits : MonoBehaviour
     // optional: heuristic bias scale (heuristic gene is [-1,1])
     public float maxHeuristicBias = 0.10f; // +-0.10 as you described
 
+    public float maxEnergy;
+    public float currentEnergy;
+
+
     private void Awake()
     {
         // If chromosome exists and has values, load from it.
@@ -95,6 +99,7 @@ public class Traits : MonoBehaviour
         Boldness = GetBoldness();
 
         InitializeHealth();
+        InitializeEnergy();
         EvaluateEmergences();
     }
 
@@ -203,6 +208,16 @@ public class Traits : MonoBehaviour
     // Health + fitness
     // ---------------------------
 
+    public void InitializeEnergy()
+    {
+        const float BASE_ENERGY = 30f;
+        const float METAB_ENERGY_BONUS = 70f;
+
+        maxEnergy = BASE_ENERGY + METAB_ENERGY_BONUS * metabolic_rate;
+        currentEnergy = maxEnergy * 0.5f; // start half-full
+    }
+
+
     public void InitializeHealth()
     {
         const float BASE_HEALTH = 50f;
@@ -215,6 +230,25 @@ public class Traits : MonoBehaviour
         currentHealth = maxHealth;
     }
 
+    public void Eat(float energy)
+    {
+        // 1) gain energy
+        currentEnergy += energy;
+
+        // clamp
+        currentEnergy = Mathf.Clamp(currentEnergy, 0f, maxEnergy);
+
+        // 2) optional: tiny instant health benefit ONLY if energy is already decent
+        // prevents "heal from 0 by eating once"
+        const float INSTANT_HEAL_FRACTION = 0.05f; // 5% of energy converts to health
+        if (currentEnergy > 0.5f * maxEnergy)
+        {
+            currentHealth += energy * INSTANT_HEAL_FRACTION;
+            currentHealth = Mathf.Clamp(currentHealth, 0f, maxHealth);
+        }
+    }
+
+
     public float GetTotalEnergyDrain(float movementDistance)
     {
         float baselineDrain = BaselineEnergyDrain;
@@ -222,16 +256,38 @@ public class Traits : MonoBehaviour
         return baselineDrain + movementDrain;
     }
 
-    public void UpdateHealth(float movementDistance, float deltaTime)
+    public void UpdateVitals(float movementDistance, float deltaTime)
     {
-        const float HEALTH_DAMAGE_SCALE = 10f;
+        const float STARVATION_DAMAGE_SCALE = 15f; // tune
+        const float HEALTH_REGEN_PER_SEC = 2f;     // optional, can set 0 if you want none
+        const float REGEN_ENERGY_THRESHOLD = 0.7f; // must have >=70% energy to regen
 
-        float energyDrain = GetTotalEnergyDrain(movementDistance);
-        float healthLoss = energyDrain * HEALTH_DAMAGE_SCALE * deltaTime;
+        // 1) compute total energy drain
+        float energyDrainPerSec = BaselineEnergyDrain + (MoveEnergyCostPerUnit * movementDistance);
+        float energyLoss = energyDrainPerSec * 10f * deltaTime; // "10f" is your old HEALTH_DAMAGE_SCALE role; now it's energy scale
 
-        currentHealth -= healthLoss;
+        // 2) pay from energy
+        currentEnergy -= energyLoss;
+
+        // 3) if energy below 0 -> convert deficit into health damage
+        if (currentEnergy < 0f)
+        {
+            float deficit = -currentEnergy;
+            currentEnergy = 0f;
+
+            currentHealth -= deficit * STARVATION_DAMAGE_SCALE;
+        }
+
+        // 4) optional: slow health regen if energy is high
+        if (currentEnergy / Mathf.Max(maxEnergy, 1e-4f) >= REGEN_ENERGY_THRESHOLD)
+        {
+            currentHealth += HEALTH_REGEN_PER_SEC * deltaTime;
+        }
+
         currentHealth = Mathf.Clamp(currentHealth, 0f, maxHealth);
+        currentEnergy = Mathf.Clamp(currentEnergy, 0f, maxEnergy);
     }
+
 
     public bool IsDead()
     {
