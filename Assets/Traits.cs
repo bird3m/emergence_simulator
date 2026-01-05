@@ -18,7 +18,8 @@ public class Traits : MonoBehaviour
 
     // heuristic traits
     // NOTE: this is your offset gene in [-1,1] (later mapped to +-bias)
-    [Range(-1f, 1f)] public float heuristic;
+    [Range(-1f, 1f)] public float upperSlopeHeuristic;
+    [Range(-1f, 1f)] public float lowerSlopeHeuristic;
     [Range(0f, 1f)] public float danger_weight;
 
     // independent trait
@@ -32,7 +33,6 @@ public class Traits : MonoBehaviour
     public bool can_camouflage;
     #endregion
 
-    // chromosome (length 8)
     public float[] chromosm;
 
     // derived from genes
@@ -53,7 +53,7 @@ public class Traits : MonoBehaviour
     private void Awake()
     {
         // If chromosome exists and has values, load from it.
-        if (chromosm != null && chromosm.Length >= 8)
+        if (chromosm != null && chromosm.Length >= 9)
         {
             LoadFromChromosome();
         }
@@ -83,10 +83,11 @@ public class Traits : MonoBehaviour
         agression = Mathf.Clamp01(chromosm[3]);
         risk_aversion = Mathf.Clamp01(chromosm[4]);
 
-        heuristic = Mathf.Clamp(chromosm[5], -1f, 1f);
+        upperSlopeHeuristic = Mathf.Clamp(chromosm[5], -1f, 1f);
+        lowerSlopeHeuristic = Mathf.Clamp(chromosm[6], -1f, 1f);
 
-        danger_weight = Mathf.Clamp01(chromosm[6]);
-        camouflage = Mathf.Clamp01(chromosm[7]);
+        danger_weight = Mathf.Clamp01(chromosm[7]);
+        camouflage = Mathf.Clamp01(chromosm[8]);
     }
 
     private void RecomputeAll()
@@ -142,15 +143,6 @@ public class Traits : MonoBehaviour
     public float GetBoldness()
     {
         return Mathf.Clamp01(1f - risk_aversion);
-    }
-
-    /// <summary>
-    /// Your evolved heuristic offset (e.g. +-0.1) applied to a perfect heuristic.
-    /// heuristic gene [-1,1] -> bias [-maxHeuristicBias, +maxHeuristicBias]
-    /// </summary>
-    public float HeuristicBias
-    {
-        get { return heuristic * maxHeuristicBias; }
     }
 
     // ---------------------------
