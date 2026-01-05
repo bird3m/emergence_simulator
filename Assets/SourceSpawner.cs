@@ -1,41 +1,45 @@
 using UnityEngine;
+using System.Collections.Generic;
+using System;
 
-public class SourceSpawner : MonoBehaviour
+
+// IMPORTANT:
+// If your own script is named/classed "Terrain", it conflicts with UnityEngine.Terrain.
+// This script avoids that by fully qualifying UnityEngine.Terrain ONLY if needed.
+// Your custom Terrain class must have: width, height, cellSize, maxAbsSlope, GetSlope(x,y), CellCenterWorld(x,y)
+
+public class SourceSpawner2D : MonoBehaviour
 {
     [Header("References")]
-    public Terrain terrain;      // your terrain script
-    public GameObject sourcePrefab;           // assign your "source" prefab
+    public Terrain terrain;              // your custom Terrain script (grid terrain)
+    public GameObject sourcePrefab;      // your source prefab
 
     [Header("Density")]
     [Range(0f, 1f)]
-    public float baseDensity = 0.08f;         // overall probability per cell
+    public float density = 0.08f;        // base probability per cell
 
-    [Tooltip("If true, uses Perlin noise to create clusters.")]
+    [Header("Clustering (optional)")]
     public bool useNoise = true;
-
-    [Tooltip("Bigger -> larger clusters. Smaller -> more frequent variation.")]
-    public float noiseScale = 0.12f;
-
-    [Tooltip("How much noise affects density (0=no effect, 1=full effect).")]
+    public float noiseScale = 0.12f;     // smaller => bigger blobs, larger => more speckle
     [Range(0f, 1f)]
-    public float noiseStrength = 0.7f;
+    public float noiseBlend = 0.75f;     // 0=ignore noise, 1=all noise
 
     [Header("Slope Bias (optional)")]
-    [Tooltip("If >0, prefer peaks (positive slopes). If <0, prefer pits (negative slopes). 0 = ignore slope.")]
     [Range(-1f, 1f)]
-    public float preferPitsOrPeaks = -0.3f;
-
-    [Tooltip("How strongly slope influences density.")]
+    public float preferPitsOrPeaks = 0f; // -1 pits, +1 peaks, 0 ignore slope
     [Range(0f, 2f)]
-    public float slopeInfluence = 0.8f;
+    public float slopeInfluence = 0f;    // 0 ignore, 1 moderate, 2 strong
 
     [Header("Spawn Limits")]
-    public int maxSpawn = 200;
-    public bool allowMultiplePerCell = false;
+    [Tooltip("0 = unlimited")]
+    public int maxSpawn = 0;
 
     [Header("Determinism")]
-    public bool useSeed = true;
-    public int seed = 999;
+    public bool deterministic = true;
+    public int seed = 12345;
+
+    [Header("Housekeeping")]
+    public bool clearPreviousOnSpawn = true;
 
     private void Start()
     {
@@ -45,105 +49,131 @@ public class SourceSpawner : MonoBehaviour
     [ContextMenu("Spawn All")]
     public void SpawnAll()
     {
-        if (terrain == null) terrain = FindObjectOfType<Terrain>();
+        if (terrain == null)
+            terrain = FindObjectOfType<Terrain>();
+
         if (terrain == null)
         {
-            Debug.LogError("SourceSpawner2D: terrain not set.");
+            Debug.LogError("SourceSpawner2D: terrain is null.");
             return;
         }
 
         if (sourcePrefab == null)
         {
-            Debug.LogError("SourceSpawner2D: sourcePrefab not set.");
+            Debug.LogError("SourceSpawner2D: sourcePrefab is null.");
             return;
         }
 
-        if (useSeed)
-            Random.InitState(seed);
+        if (clearPreviousOnSpawn)
+            ClearSpawned();
 
-        int spawned = 0;
+        int limit = (maxSpawn <= 0) ? int.MaxValue : maxSpawn;
 
+        // Build a list of ALL cells
+        List<Vector2Int> cells = new List<Vector2Int>(terrain.width * terrain.height);
         for (int x = 0; x < terrain.width; x++)
         {
             for (int y = 0; y < terrain.height; y++)
             {
-                if (spawned >= maxSpawn)
-                    return;
-
-                if (!allowMultiplePerCell && CellAlreadyHasSource(x, y))
-                    continue;
-
-                float p = DensityAtCell(x, y);
-
-                // roll
-                float r = Random.value;
-                if (r <= p)
-                {
-                    Vector3 pos = terrain.CellCenterWorld(x, y);
-                    Instantiate(sourcePrefab, pos, Quaternion.identity, transform);
-                    spawned++;
-                }
+                cells.Add(new Vector2Int(x, y));
             }
+        }
+
+        // Shuffle cells so spawning is evenly distributed across the whole terrain
+        Shuffle(cells, deterministic ? seed : Environment.TickCount);
+
+        int spawned = 0;
+
+        for (int i = 0; i < cells.Count; i++)
+        {
+            if (spawned >= limit)
+                break;
+
+            int x = cells[i].x;
+            int y = cells[i].y;
+
+            float p = ProbabilityAtCell(x, y);
+
+            // roll
+            float r = deterministic ? CellRandom01(x, y, seed) : UnityEngine.Random.value;
+
+            if (r <= p)
+            {
+                Vector3 pos = terrain.CellCenterWorld(x, y);
+                Instantiate(sourcePrefab, pos, Quaternion.identity, transform);
+                spawned++;
+            }
+        }
+
+        Debug.Log("Spawned: " + spawned + " / limit: " + (maxSpawn <= 0 ? "unlimited" : maxSpawn.ToString()));
+    }
+
+    private void Shuffle(List<Vector2Int> list, int s)
+    {
+        // Fisher-Yates shuffle
+        System.Random rng = new System.Random(s);
+
+        for (int i = list.Count - 1; i > 0; i--)
+        {
+            int j = rng.Next(i + 1);
+            Vector2Int tmp = list[i];
+            list[i] = list[j];
+            list[j] = tmp;
         }
     }
 
-    private float DensityAtCell(int x, int y)
-    {
-        float p = baseDensity;
 
-        // 1) Noise clustering
+    [ContextMenu("Clear Spawned")]
+    public void ClearSpawned()
+    {
+        for (int i = transform.childCount - 1; i >= 0; i--)
+        {
+            Destroy(transform.GetChild(i).gameObject);
+        }
+    }
+
+    private float ProbabilityAtCell(int x, int y)
+    {
+        float p = density;
+
+        // 1) Noise: blend instead of multiply-to-zero
         if (useNoise)
         {
             float n = Mathf.PerlinNoise(x * noiseScale, y * noiseScale); // 0..1
-            // mix base density with noise
-            p *= Mathf.Lerp(1f, n, noiseStrength);
+            float noiseFactor = Mathf.Lerp(1f, n, noiseBlend);           // 1..n
+            p *= noiseFactor;
         }
 
         // 2) Slope bias (optional)
-        if (Mathf.Abs(preferPitsOrPeaks) > 0.0001f || slopeInfluence > 0.0001f)
+        if (slopeInfluence > 0.0001f && Mathf.Abs(preferPitsOrPeaks) > 0.0001f)
         {
-            float s = terrain.GetSlope(x, y); // can be negative or positive
+            float s = terrain.GetSlope(x, y);
             float maxAbs = Mathf.Max(terrain.maxAbsSlope, 0.0001f);
+            float sn = Mathf.Clamp(s / maxAbs, -1f, 1f);                 // -1..+1
 
-            // Normalize slope to -1..+1
-            float sn = Mathf.Clamp(s / maxAbs, -1f, 1f);
+            // Alignment: + when slope matches preference
+            float alignment = sn * preferPitsOrPeaks;                    // -1..+1
+            float mult = 1f + alignment * slopeInfluence;                // can go below 0
 
-            // preferPitsOrPeaks:
-            //  -1 => pits, +1 => peaks
-            // Map preference into a multiplier:
-            // If prefer=-1 and sn=-1 => boost
-            // If prefer=-1 and sn=+1 => reduce
-            float alignment = sn * preferPitsOrPeaks; // -1..+1
-            float mult = 1f + alignment * slopeInfluence;
-
-            // keep sane
             if (mult < 0f) mult = 0f;
-
             p *= mult;
         }
 
-        // clamp to probability
         return Mathf.Clamp01(p);
     }
 
-    private bool CellAlreadyHasSource(int x, int y)
+    // Deterministic pseudo-random in [0,1) per cell
+    private float CellRandom01(int x, int y, int s)
     {
-        // Simple check: if you spawn all sources as children of this spawner,
-        // we can approximate by distance to cell center.
-        Vector3 center = terrain.CellCenterWorld(x, y);
-        float eps = terrain.cellSize * 0.2f;
+        // Simple integer hash (fast, stable)
+        int h = s;
+        h = h ^ (x * 374761393);
+        h = h ^ (y * 668265263);
+        h = (h ^ (h >> 13)) * 1274126177;
+        h = h ^ (h >> 16);
 
-        for (int i = 0; i < transform.childCount; i++)
-        {
-            Transform t = transform.GetChild(i);
-            if ((t.position - center).sqrMagnitude <= eps * eps)
-                return true;
-        }
-
-        return false;
+        // Convert to 0..1
+        uint uh = (uint)h;
+        return (uh & 0x00FFFFFF) / 16777216f;
     }
-
-
-
-    
 }
