@@ -56,10 +56,6 @@ public class OrganismBehaviour : MonoBehaviour
         InitializeGrid();
         SetRandomWanderTarget();
 
-        if (traits == null)
-        {
-            Debug.LogError("Traits component missing on organism: " + gameObject.name);
-        }
     }
 
     private void Update()

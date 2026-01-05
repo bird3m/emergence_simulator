@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 
-/* Simple GA that evolves Traits.chromosm (8 genes) and reads fitness directly from Traits.Fitness01().
+/* Simple GA that evolves Traits.chromosm (9 genes) and reads fitness directly from Traits.Fitness01().
 ** No extra Stats script needed.
 */
 public class GeneticAlgorithm : MonoBehaviour
@@ -95,8 +95,8 @@ public class GeneticAlgorithm : MonoBehaviour
             }
 
             // Assign chromosome
-            t.chromosm = new float[8];
-            Array.Copy(population[i].chrom, t.chromosm, 8);
+            t.chromosm = new float[9];
+            Array.Copy(population[i].chrom, t.chromosm, 9);
 
             // IMPORTANT: recompute after GA sets chromosm
             t.ApplyChromosomeAndRecompute();
