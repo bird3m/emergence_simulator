@@ -147,9 +147,13 @@ public class Traits : MonoBehaviour
 
     public float GetBaselineEnergyDrain()
     {
-        const float minDrain = 0.6f;
-        const float maxExtra = 1.05f;
-        return minDrain + maxExtra * metabolic_rate;
+        // PARETO BASKISI: Metabolizma hızı yüksek olanın "rölanti" harcaması da yüksek olur.
+        // Ancak kütle arttıkça bazal tüketim verimliliği artar (Kleiber kanunu simülasyonu)
+        const float minDrain = 0.3f;
+        float metabolicTax = 1.2f * metabolic_rate;
+        float sizeTax = 0.5f * mass; 
+
+        return minDrain + metabolicTax + sizeTax;
     }
 
     public float GetMoveEnergyCostPerUnit(float effectiveMass, float speed)
@@ -264,14 +268,13 @@ public class Traits : MonoBehaviour
 
     public void InitializeEnergy()
     {
-        const float BASE_ENERGY = 70f;
-        const float METAB_ENERGY_BONUS = 140f;
-
-        maxEnergy = BASE_ENERGY + METAB_ENERGY_BONUS * metabolic_rate;
-        currentEnergy = maxEnergy * 0.45f; // start a bit under half to encourage mild attrition
-
-         flag = true;
+        // PARETO BASKISI: Büyük kütle = Büyük batarya (maxEnergy)
+        // Küçük canlılar (low mass) çok çevik ama pilleri çok küçük.
+        const float BASE_ENERGY = 50f;
+        const float MASS_STORAGE_BONUS = 150f; // Kütle artık bir avantaj
         
+        maxEnergy = BASE_ENERGY + (MASS_STORAGE_BONUS * mass) + (50f * metabolic_rate);
+        currentEnergy = maxEnergy * 0.8f;
     }
 
     public void Eat(float energy)
