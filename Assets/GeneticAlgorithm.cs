@@ -361,7 +361,7 @@ public class GeneticAlgorithm : MonoBehaviour
 
         // [0..1]
         c[7] = Rand01(); // danger_weight
-        c[8] = Rand01(); // camouflage
+
 
         return c;
     }

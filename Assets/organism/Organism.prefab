@@ -181,7 +181,6 @@ GameObject:
   - component: {fileID: 3090274887604956481}
   - component: {fileID: -1575770003150650132}
   - component: {fileID: 8374197187614914342}
-  - component: {fileID: 6827863834315967348}
   - component: {fileID: -1779852597295020743}
   m_Layer: 0
   m_Name: Organism
@@ -368,7 +367,6 @@ MonoBehaviour:
   spawner: {fileID: 0}
   repathIfTargetMoved: 1
   repathMoveThreshold: 1
-  lastPath: []
   traits: {fileID: 7737531533977272853}
   flyingSprite: {fileID: 21300000, guid: 0b756e4af06c953479a3caec093cb042, type: 3}
   carnivoreSprite: {fileID: 21300000, guid: afc6d551a5fb1ca478357502ec94a9e7, type: 3}
@@ -514,19 +512,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::resource
   nutrition: 30
---- !u!114 &6827863834315967348
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1327708465454452514}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4dea1c63d0d9b624eb8422dfa79caf71, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: '::'
-  statsText: {fileID: 0}
 --- !u!58 &-1779852597295020743
 CircleCollider2D:
   m_ObjectHideFlags: 0

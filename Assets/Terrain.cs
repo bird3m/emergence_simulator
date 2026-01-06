@@ -11,7 +11,13 @@ public class Terrain : MonoBehaviour
 
     [Header("Slope Generation")]
     [Tooltip("Slope values will be generated in range [-maxAbsSlope, +maxAbsSlope].")]
-    public float maxAbsSlope = 1f;
+    public float maxAbsSlope = 5f;
+
+    [Tooltip("Scale for Perlin noise - smaller values = larger terrain features")]
+    public float noiseScale = 0.08f;
+    
+    [Tooltip("Number of peaks and valleys - higher = more dramatic terrain")]
+    public float terrainFrequency = 1.5f;
 
     [Tooltip("If true, use seed for repeatable terrain.")]
     public bool useSeed = true;
@@ -47,19 +53,52 @@ public class Terrain : MonoBehaviour
             Random.InitState(seed);
         }
 
+        // Random offset for Perlin noise
+        float offsetX = Random.Range(0f, 10000f);
+        float offsetY = Random.Range(0f, 10000f);
+
+        // Generate terrain using multi-octave Perlin noise for realistic hills and valleys
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
             {
-                // Random slope in [-maxAbsSlope, +maxAbsSlope]
-                float s = Random.Range(-maxAbsSlope, maxAbsSlope);
-
-                // Optional: if you want more flats, you can clamp small values to 0
-                // if (Mathf.Abs(s) < 0.1f) s = 0f;
-
-                slope[x, y] = s;
+                float xCoord = (float)x * noiseScale * terrainFrequency + offsetX;
+                float yCoord = (float)y * noiseScale * terrainFrequency + offsetY;
+                
+                // Multi-octave Perlin noise - creates natural terrain with multiple detail levels
+                float value = 0f;
+                float amplitude = 1f;
+                float frequency = 1f;
+                float maxValue = 0f;
+                
+                // 4 octaves for rich terrain detail
+                for (int i = 0; i < 4; i++)
+                {
+                    value += Mathf.PerlinNoise(xCoord * frequency, yCoord * frequency) * amplitude;
+                    maxValue += amplitude;
+                    amplitude *= 0.5f;
+                    frequency *= 2f;
+                }
+                
+                // Normalize and map to slope range
+                value /= maxValue;
+                
+                // Transform from [0,1] to [-maxAbsSlope, +maxAbsSlope]
+                // Apply power curve to make peaks sharper and valleys deeper
+                value = Mathf.Pow(value, 0.8f); // Slight curve for more dramatic features
+                float terrainSlope = (value * 2f - 1f) * maxAbsSlope;
+                
+                // Add some sharp peaks and deep valleys randomly
+                if (Random.value < 0.03f) // 3% chance for extreme features
+                {
+                    terrainSlope *= 1.8f;
+                }
+                
+                slope[x, y] = Mathf.Clamp(terrainSlope, -maxAbsSlope, maxAbsSlope);
             }
         }
+
+        Debug.Log($"Terrain generated with deep valleys and high peaks (slope range: {-maxAbsSlope} to {maxAbsSlope})");
     }
 
     /// <summary>
