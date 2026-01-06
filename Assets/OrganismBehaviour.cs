@@ -7,7 +7,7 @@ public class OrganismBehaviour : MonoBehaviour
    
     public float border = 10f;
     public float reachTolerance = 0.5f;
-    public float speed = 5f;
+    public float speed = 0.0f;
     public float wanderRadius = 8f;
 
   [Header("Energy vs Slope")]
@@ -82,13 +82,16 @@ public class OrganismBehaviour : MonoBehaviour
         accumulatedRealEffort = 0f;
 
         // traits cache (sende public ama null kalabiliyor)
-        if (traits == null) traits = GetComponent<Traits>();
+        if (traits == null) 
+            traits = GetComponent<Traits>();
+
+        speed = traits.GetSpeed(traits.PowerToWeight);
 
         float j = UnityEngine.Random.Range(0f, thinkJitter);
         nextRepathTime = Time.time + j;
         nextSearchTime = Time.time + j;
-
     }
+
 
     private void BuildSharedGraph()
     {
@@ -321,24 +324,37 @@ public class OrganismBehaviour : MonoBehaviour
     }
 
 
-    private void FollowPath()
+   private void FollowPath()
     {
-        if (pathPoints.Count == 0 || pathIndex >= pathPoints.Count) return;
+        if (pathPoints.Count == 0 || pathIndex >= pathPoints.Count)
+             return;
 
         Vector2 target = pathPoints[pathIndex];
-        transform.position = Vector2.MoveTowards(transform.position, target, speed * Time.deltaTime);
+        transform.position = Vector2.MoveTowards(transform.position, target, speed * Time.deltaTime); 
 
         if (Vector2.Distance(transform.position, target) < reachTolerance)
         {
             pathIndex++;
         }
-        if(pathIndex == pathPoints.Count && currentTarget != null)
+
+        if (pathIndex == pathPoints.Count && currentTarget != null)
         {
-            float nut = currentTarget.GetComponent<resource>().nutrition;
+            var res = currentTarget.GetComponent<resource>();
+            float nut = (res != null) ? res.nutrition : 0f;
+
+            if (spawner != null) 
+                spawner.ScheduleRespawn(nut);
+
             Destroy(currentTarget);
-            GetComponent<Traits>().Eat(nut);
+
+            if (traits != null) traits.Eat(nut);
+
+            currentTarget = null;
+            pathPoints.Clear();
+            pathIndex = 0;
         }
     }
+
 
     // ---------------- HELPERS ----------------
 
