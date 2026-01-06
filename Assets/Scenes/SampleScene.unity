@@ -856,6 +856,7 @@ MonoBehaviour:
   upperGraph: {fileID: 964052825}
   lowerGraph: {fileID: 1386671343}
   spawner: {fileID: 568344365}
+  alpha: 0.5
 --- !u!4 &1038267132
 Transform:
   m_ObjectHideFlags: 0
@@ -1093,7 +1094,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &1435228986
 RectTransform:
   m_ObjectHideFlags: 0
