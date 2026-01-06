@@ -460,7 +460,10 @@ public class OrganismBehaviour : MonoBehaviour
              return;
 
         Vector2 target = pathPoints[pathIndex];
-        transform.position = Vector2.MoveTowards(transform.position, target, speed * Time.deltaTime); 
+        transform.position = Vector2.MoveTowards(transform.position, target, speed * Time.deltaTime);
+        
+        // Map sınırları içinde tut
+        ClampPositionToMap();
 
         if (Vector2.Distance(transform.position, target) < reachTolerance)
         {
@@ -483,6 +486,23 @@ public class OrganismBehaviour : MonoBehaviour
             pathPoints.Clear();
             pathIndex = 0;
         }
+    }
+
+    private void ClampPositionToMap()
+    {
+        if (terrain == null) return;
+        
+        // Map sınırlarını hesapla (terrain grid'inin dünya koordinatlarındaki konumu)
+        Vector3 minCorner = terrain.CellCenterWorld(0, 0);
+        Vector3 maxCorner = terrain.CellCenterWorld(terrain.width - 1, terrain.height - 1);
+        
+        // Cell size kadar padding ekle (kenarlardan içerde tut)
+        float padding = terrain.cellSize * 0.5f;
+        
+        Vector3 pos = transform.position;
+        pos.x = Mathf.Clamp(pos.x, minCorner.x - padding, maxCorner.x + padding);
+        pos.y = Mathf.Clamp(pos.y, minCorner.y - padding, maxCorner.y + padding);
+        transform.position = pos;
     }
 
 
@@ -639,7 +659,21 @@ public class OrganismBehaviour : MonoBehaviour
     {
         pathPoints.Clear();
 
-        Vector2 randomPoint = (Vector2)transform.position + UnityEngine.Random.insideUnitCircle * wanderRadius;
+        // Map sınırları içinde random pozisyon seç
+        Vector2 currentPos = transform.position;
+        Vector2 randomPoint = currentPos + UnityEngine.Random.insideUnitCircle * wanderRadius;
+        
+        // Wander target'ı da map içinde tut
+        if (terrain != null)
+        {
+            Vector3 minCorner = terrain.CellCenterWorld(0, 0);
+            Vector3 maxCorner = terrain.CellCenterWorld(terrain.width - 1, terrain.height - 1);
+            float padding = terrain.cellSize * 0.5f;
+            
+            randomPoint.x = Mathf.Clamp(randomPoint.x, minCorner.x - padding, maxCorner.x + padding);
+            randomPoint.y = Mathf.Clamp(randomPoint.y, minCorner.y - padding, maxCorner.y + padding);
+        }
+        
         pathPoints.Add(randomPoint);
 
         pathIndex = 0;
