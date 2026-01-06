@@ -63,32 +63,13 @@ public class OrganismBehaviour : MonoBehaviour
     private float nextRepathTime = 0f;
     private float nextSearchTime = 0f;
     
-    [Header("Herding")]
-    public float herdDetectionRadius = 8f;     // yakın carnivore algılama yarıçapı
-    public float herdFleeDistance = 10f;      // sürü kaçış hedefi için öne taşınacak mesafe
-    public float herdSpeedMultiplier = 1.5f;  // sürü halinde hız çarpanı
-    public float herdDuration = 6f;           // kaç saniye sürü davranışı sürsün
-
-    private bool isHerding = false;
-    private float herdStartTime = 0f;
-    private Vector2 herdTarget = Vector2.zero;
-    private float baseSpeed = 0f;
+    
     [Header("Debug Seed")]
     [Tooltip("If true, randomly mark some organisms as carnivores at Start for testing")]
     public bool seedInitialCarnivores = true;
     [Range(0f,1f)] public float initialCarnivoreFraction = 0.10f;
 
-    [Header("Group Clustering")]
-    public int herdGroupMinSize = 5;          // minimum group size to start tight clustering
-    public float herdGroupRadius = 5f;        // radius to search neighbours for group (uses 'border' if you prefer)
-    public float herdClusterRadius = 0.8f;    // how tight the cluster is (small = dip dibe)
-    public float herdClusterInterval = 2f;    // how often cluster members pick a nearby spot
-
-    private bool isClustered = false;
-    private Vector2 clusterCenter = Vector2.zero;
-    private float nextClusterMoveTime = 0f;
-    [Tooltip("Write herd start/stop messages to Console when clustering occurs")]
-    public bool logHerding = true;
+    
 
 
 
@@ -119,7 +100,7 @@ public class OrganismBehaviour : MonoBehaviour
             traits = GetComponent<Traits>();
 
         speed = traits.GetSpeed(traits.PowerToWeight);
-        baseSpeed = speed;
+        
 
         // Optional: seed a fraction of organisms as carnivores at start for visual testing
         if (seedInitialCarnivores && traits != null)
@@ -241,170 +222,7 @@ public class OrganismBehaviour : MonoBehaviour
             }
         }
 
-        // -------------------------
-        // HERDING (detect nearby carnivores and form group)
-        // Only animals with can_herd participate
-        // -------------------------
-        if (traits != null && !traits.is_carnivore && traits.can_herd && !traits.IsDead())
-        {
-            GameObject nearbyCarn = FindNearbyCarnivore(herdDetectionRadius);
-
-            if (nearbyCarn != null)
-            {
-                // compute group center of nearby non-carnivore organisms
-                OrganismBehaviour[] organisms = GameObject.FindObjectsOfType<OrganismBehaviour>();
-                Vector2 groupCenter = Vector2.zero;
-                int groupCount = 0;
-
-                for (int i = 0; i < organisms.Length; i++)
-                {
-                    OrganismBehaviour ob = organisms[i];
-                    if (ob == null) continue;
-                    if (ob.traits == null) continue;
-                    if (ob.traits.IsDead()) continue;
-                    if (ob.traits.is_carnivore) continue;
-                    if (!ob.traits.can_herd) continue;
-
-                    float d = Vector2.Distance(transform.position, ob.transform.position);
-                    if (d <= herdDetectionRadius)
-                    {
-                        groupCenter += (Vector2)ob.transform.position;
-                        groupCount++;
-                    }
-                }
-
-                if (groupCount == 0) groupCenter = transform.position;
-                else groupCenter /= groupCount;
-
-                Vector2 fleeDir = groupCenter - (Vector2)nearbyCarn.transform.position;
-                if (fleeDir.sqrMagnitude < 0.001f) fleeDir = UnityEngine.Random.insideUnitCircle.normalized;
-                else fleeDir.Normalize();
-
-                Vector2 herdMoveTarget = groupCenter + fleeDir * herdFleeDistance;
-
-                // instruct each nearby non-carnivore to begin herding toward herdMoveTarget
-                for (int i = 0; i < organisms.Length; i++)
-                {
-                    OrganismBehaviour ob = organisms[i];
-                    if (ob == null) continue;
-                    if (ob.traits == null) continue;
-                    if (ob.traits.IsDead()) continue;
-                    if (ob.traits.is_carnivore) continue;
-                    if (!ob.traits.can_herd) continue;
-
-                    float d = Vector2.Distance((Vector2)ob.transform.position, groupCenter);
-                    if (d <= herdDetectionRadius)
-                    {
-                        ob.BeginHerding(herdMoveTarget);
-                    }
-                }
-            }
-            else
-            {
-                if (isHerding)
-                    StopHerding();
-            }
-        }
-
-        // If currently herding, stop after herdDuration
-        if (isHerding && (Time.time - herdStartTime) > herdDuration)
-        {
-            StopHerding();
-        }
-
-        // --- Group clustering detection/maintenance ---
-        // If not already clustered, detect neighbours and possibly start clustering
-        if (!isClustered)
-        {
-            if (traits != null && traits.can_herd && !traits.is_carnivore && !traits.IsDead())
-            {
-                OrganismBehaviour[] organisms = GameObject.FindObjectsOfType<OrganismBehaviour>();
-                Vector2 sum = Vector2.zero;
-                int count = 0;
-
-                for (int i = 0; i < organisms.Length; i++)
-                {
-                    var ob = organisms[i];
-                    if (ob == null) continue;
-                    if (ob.traits == null) continue;
-                    if (!ob.traits.can_herd) continue;
-                    if (ob.traits.IsDead()) continue;
-                    if (ob.traits.is_carnivore) continue;
-
-                    float d = Vector2.Distance(transform.position, ob.transform.position);
-                    if (d <= herdGroupRadius)
-                    {
-                        sum += (Vector2)ob.transform.position;
-                        count++;
-                    }
-                }
-
-                if (count >= herdGroupMinSize)
-                {
-                    Vector2 center = (count > 0) ? (sum / count) : (Vector2)transform.position;
-
-                    // instruct all nearby eligible organisms to begin clustering
-                    if (logHerding)
-                    {
-                        Debug.Log("[HERD] Group clustering started at " + center + " size=" + count);
-                    }
-                    for (int i = 0; i < organisms.Length; i++)
-                    {
-                        var ob = organisms[i];
-                        if (ob == null) continue;
-                        if (ob.traits == null) continue;
-                        if (!ob.traits.can_herd) continue;
-                        if (ob.traits.IsDead()) continue;
-                        if (ob.traits.is_carnivore) continue;
-
-                        float d = Vector2.Distance(center, ob.transform.position);
-                        if (d <= herdGroupRadius)
-                        {
-                            ob.BeginClustering(center);
-                        }
-                    }
-                }
-            }
-        }
-        else
-        {
-            // Maintain clustering: pick new close target occasionally
-            if (isClustered && Time.time >= nextClusterMoveTime)
-            {
-                nextClusterMoveTime = Time.time + herdClusterInterval + UnityEngine.Random.Range(0f, 0.5f);
-                Vector2 target = clusterCenter + UnityEngine.Random.insideUnitCircle * herdClusterRadius;
-                pathPoints.Clear();
-                pathPoints.Add(target);
-                pathIndex = 0;
-            }
-
-            // If cluster broken (not enough neighbours), stop clustering
-            if (traits == null || !traits.can_herd || traits.IsDead() || traits.is_carnivore)
-            {
-                StopClustering();
-            }
-            else
-            {
-                // verify cluster still has enough members
-                OrganismBehaviour[] organismsCheck = GameObject.FindObjectsOfType<OrganismBehaviour>();
-                int nearbyCount = 0;
-                for (int i = 0; i < organismsCheck.Length; i++)
-                {
-                    var ob = organismsCheck[i];
-                    if (ob == null) continue;
-                    if (ob.traits == null) continue;
-                    if (!ob.traits.can_herd) continue;
-                    if (ob.traits.IsDead()) continue;
-                    if (ob.traits.is_carnivore) continue;
-
-                    float d = Vector2.Distance(clusterCenter, ob.transform.position);
-                    if (d <= herdGroupRadius) nearbyCount++;
-                }
-
-                if (nearbyCount < herdGroupMinSize)
-                    StopClustering();
-            }
-        }
+        
 
         // Handle current target only if it exists (avoid NullReference)
         if (currentTarget != null)
@@ -701,33 +519,7 @@ public class OrganismBehaviour : MonoBehaviour
 
         return closest;
     }
-
-    private GameObject FindNearbyCarnivore(float radius)
-    {
-        OrganismBehaviour[] organisms = GameObject.FindObjectsOfType<OrganismBehaviour>();
-
-        GameObject closest = null;
-        float minDist = radius;
-
-        for (int i = 0; i < organisms.Length; i++)
-        {
-            OrganismBehaviour ob = organisms[i];
-            if (ob == null) continue;
-            if (ob == this) continue;
-            if (ob.traits == null) continue;
-            if (!ob.traits.is_carnivore) continue;
-            if (ob.traits.IsDead()) continue;
-
-            float d = Vector2.Distance(transform.position, ob.transform.position);
-            if (d < minDist)
-            {
-                minDist = d;
-                closest = ob.gameObject;
-            }
-        }
-
-        return closest;
-    }
+    
 
     private GameObject FindClosestPreyInRange()
     {
@@ -757,60 +549,7 @@ public class OrganismBehaviour : MonoBehaviour
         return null;
     }
 
-    // --- Herd control helpers ---
-    public void BeginHerding(Vector2 target)
-    {
-        if (traits == null || !traits.can_herd || traits.IsDead() || traits.is_carnivore) return;
-
-        herdTarget = target;
-        isHerding = true;
-        herdStartTime = Time.time;
-
-        // temporarily increase speed
-        speed = baseSpeed * herdSpeedMultiplier;
-
-        // plan path to herd target
-        CalculateAStarPath(herdTarget);
-        lastPlannedTargetPos = herdTarget;
-        nextRepathTime = Time.time + repathInterval + UnityEngine.Random.Range(0f, thinkJitter);
-    }
-
-    public void StopHerding()
-    {
-        isHerding = false;
-        speed = baseSpeed;
-        herdTarget = Vector2.zero;
-    }
-
-    // --- Group clustering helpers ---
-    public void BeginClustering(Vector2 center)
-    {
-        if (traits == null || !traits.can_herd || traits.IsDead() || traits.is_carnivore) return;
-
-        isClustered = true;
-        clusterCenter = center;
-        nextClusterMoveTime = Time.time + UnityEngine.Random.Range(0f, herdClusterInterval);
-
-        // slightly reduce speed so they stay close
-        speed = baseSpeed * 0.9f;
-
-        // set a close target near center
-        Vector2 target = clusterCenter + UnityEngine.Random.insideUnitCircle * herdClusterRadius;
-        pathPoints.Clear();
-        pathPoints.Add(target);
-        pathIndex = 0;
-        if (logHerding)
-            Debug.Log(gameObject.name + ": BeginClustering near " + clusterCenter.ToString());
-    }
-
-    public void StopClustering()
-    {
-        isClustered = false;
-        speed = baseSpeed;
-        clusterCenter = Vector2.zero;
-        if (logHerding)
-            Debug.Log(gameObject.name + ": StopClustering");
-    }
+    
 
     private uint HeuristicForNode(PathfindingAstar.GraphNode n, Vector2 destination)
     {

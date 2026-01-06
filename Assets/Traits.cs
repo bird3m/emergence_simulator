@@ -173,7 +173,8 @@ public class Traits : MonoBehaviour
     public void EvaluateEmergences()
     {
         can_fly = (EffectiveMass <= 0.55f) && (PowerToWeight >= 0.70f) && (metabolic_rate >= 0.65f);
-        can_herd = (risk_aversion >= 0.60f) && (danger_weight >= 0.60f);
+        // Herding emergence removed: no organisms will gain `can_herd`
+        can_herd = false;
 
         // Increase effective aggression when resources per organism is low
         float effectiveAggression = agression;
@@ -267,7 +268,7 @@ public class Traits : MonoBehaviour
         const float METAB_ENERGY_BONUS = 120f;
 
         maxEnergy = BASE_ENERGY + METAB_ENERGY_BONUS * metabolic_rate;
-        currentEnergy = maxEnergy * 0.75f;
+        currentEnergy = maxEnergy * 0.75f; // start a bit under half to encourage mild attrition
 
          flag = true;
         

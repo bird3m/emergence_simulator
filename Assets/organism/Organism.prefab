@@ -320,8 +320,11 @@ MonoBehaviour:
   can_herd: 0
   is_scavenging: 0
   is_carnivore: 0
+<<<<<<< HEAD
   scarcityThreshold: 0.5
   maxAggressionBoost: 0.6
+=======
+>>>>>>> 3817cc593fe57eea1e6c765d12393109126e2a68
   chromosm:
   - 0
   - 0

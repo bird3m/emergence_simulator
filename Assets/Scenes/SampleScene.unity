@@ -1338,6 +1338,9 @@ MonoBehaviour:
   crossoverRate: 0.9
   mutationRate: 0.08
   mutationStep: 0.1
+  flyingFitnessBonus: 0.15
+  carnivoreBonus: 0.1
+  herdBonus: 0.05
   evaluationSeconds: 50
   upperAvgText: {fileID: 730338129}
   lowerAvgText: {fileID: 1119045634}
@@ -1858,7 +1861,7 @@ MonoBehaviour:
   height: 200
   cellSize: 1
   maxAbsSlope: 1
-  noiseScale: 0.08
+  noiseScale: 0.15
   terrainFrequency: 1.5
   useSeed: 1
   seed: 12345

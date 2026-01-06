@@ -382,11 +382,15 @@ public class controlFlow : MonoBehaviour
     {
         if (traitGraphPanel == null || traitAveragesHistory.Count < 2) return;
         
-        // Clear existing lines
+        // Clear existing lines and axes
         foreach (Transform child in traitGraphPanel.transform)
         {
-            if (child.name.StartsWith("Line_")) Destroy(child.gameObject);
+            if (child.name.StartsWith("Line_") || child.name.StartsWith("Axis_") || child.name == "Legend") 
+                Destroy(child.gameObject);
         }
+        
+        // Draw axes first
+        DrawAxes(traitGraphPanel);
         
         // Draw lines for each trait
         string[] traitNames = new[] { "Mass", "Muscle", "Metabolic", "Aggression", "Risk Aversion" };
@@ -483,14 +487,83 @@ public class controlFlow : MonoBehaviour
         }
     }
     
+    void DrawAxes(GameObject parent)
+    {
+        // Y-axis labels (0.0, 0.2, 0.4, 0.6, 0.8, 1.0)
+        for (int i = 0; i <= 5; i++)
+        {
+            float value = i * 0.2f;
+            
+            GameObject labelGO = new GameObject($"Axis_YLabel_{i}");
+            labelGO.transform.SetParent(parent.transform, false);
+            
+            TextMeshProUGUI labelText = labelGO.AddComponent<TextMeshProUGUI>();
+            labelText.text = value.ToString("F1");
+            labelText.fontSize = 12;
+            labelText.color = new Color(0.7f, 0.7f, 0.7f);
+            labelText.alignment = TextAlignmentOptions.Right;
+            
+            RectTransform labelRect = labelGO.GetComponent<RectTransform>();
+            labelRect.anchorMin = new Vector2(0.02f, 0.15f + i * 0.14f);
+            labelRect.anchorMax = new Vector2(0.08f, 0.15f + i * 0.14f);
+            labelRect.sizeDelta = new Vector2(0f, 20f);
+            labelRect.anchoredPosition = new Vector2(0f, 0f);
+            
+            // Draw horizontal grid line
+            GameObject gridLineGO = new GameObject($"Axis_GridLine_{i}");
+            gridLineGO.transform.SetParent(parent.transform, false);
+            
+            UnityEngine.UI.Image gridImg = gridLineGO.AddComponent<UnityEngine.UI.Image>();
+            gridImg.color = new Color(0.3f, 0.3f, 0.3f, 0.3f);
+            
+            RectTransform gridRect = gridLineGO.GetComponent<RectTransform>();
+            gridRect.anchorMin = new Vector2(0.1f, 0.15f + i * 0.14f);
+            gridRect.anchorMax = new Vector2(0.9f, 0.15f + i * 0.14f);
+            gridRect.sizeDelta = new Vector2(0f, 1f);
+        }
+        
+        // X-axis label (Generation/Sample)
+        GameObject xLabelGO = new GameObject("Axis_XLabel");
+        xLabelGO.transform.SetParent(parent.transform, false);
+        
+        TextMeshProUGUI xLabelText = xLabelGO.AddComponent<TextMeshProUGUI>();
+        xLabelText.text = $"Samples (Latest: {traitAveragesHistory.Count})";
+        xLabelText.fontSize = 12;
+        xLabelText.color = new Color(0.7f, 0.7f, 0.7f);
+        xLabelText.alignment = TextAlignmentOptions.Center;
+        
+        RectTransform xLabelRect = xLabelGO.GetComponent<RectTransform>();
+        xLabelRect.anchorMin = new Vector2(0.1f, 0.05f);
+        xLabelRect.anchorMax = new Vector2(0.9f, 0.12f);
+        xLabelRect.offsetMin = Vector2.zero;
+        xLabelRect.offsetMax = Vector2.zero;
+        
+        // Y-axis label
+        GameObject yLabelGO = new GameObject("Axis_YLabel_Title");
+        yLabelGO.transform.SetParent(parent.transform, false);
+        
+        TextMeshProUGUI yLabelText = yLabelGO.AddComponent<TextMeshProUGUI>();
+        yLabelText.text = "Trait Value";
+        yLabelText.fontSize = 12;
+        yLabelText.color = new Color(0.7f, 0.7f, 0.7f);
+        yLabelText.alignment = TextAlignmentOptions.Center;
+        
+        RectTransform yLabelRect = yLabelGO.GetComponent<RectTransform>();
+        yLabelRect.anchorMin = new Vector2(0.01f, 0.4f);
+        yLabelRect.anchorMax = new Vector2(0.05f, 0.6f);
+        yLabelRect.offsetMin = Vector2.zero;
+        yLabelRect.offsetMax = Vector2.zero;
+    }
+    
     void UpdateEmergenceGraph()
     {
         if (emergenceGraphPanel == null || emergenceCountsHistory.Count == 0) return;
         
-        // Clear existing bars
+        // Clear existing bars and axes
         foreach (Transform child in emergenceGraphPanel.transform)
         {
-            if (child.name.StartsWith("Bar_")) Destroy(child.gameObject);
+            if (child.name.StartsWith("Bar_") || child.name.StartsWith("Axis_")) 
+                Destroy(child.gameObject);
         }
         
         // Get latest emergence counts
@@ -505,6 +578,9 @@ public class controlFlow : MonoBehaviour
         
         int maxCount = latestCounts.Values.Max();
         if (maxCount == 0) maxCount = 1;
+        
+        // Draw Y-axis with values
+        DrawEmergenceAxes(emergenceGraphPanel, maxCount);
         
         for (int i = 0; i < emergenceNames.Length; i++)
         {
@@ -546,5 +622,77 @@ public class controlFlow : MonoBehaviour
         labelRect.anchorMax = new Vector2(1f, 0f);
         labelRect.offsetMin = Vector2.zero;
         labelRect.offsetMax = Vector2.zero;
+    }
+    
+    void DrawEmergenceAxes(GameObject parent, int maxCount)
+    {
+        // Calculate nice round numbers for Y-axis
+        int step = Mathf.Max(1, Mathf.CeilToInt(maxCount / 5f));
+        int roundedMax = step * 5;
+        
+        // Y-axis labels (count values)
+        for (int i = 0; i <= 5; i++)
+        {
+            int value = i * step;
+            
+            GameObject labelGO = new GameObject($"Axis_YLabel_{i}");
+            labelGO.transform.SetParent(parent.transform, false);
+            
+            TextMeshProUGUI labelText = labelGO.AddComponent<TextMeshProUGUI>();
+            labelText.text = value.ToString();
+            labelText.fontSize = 12;
+            labelText.color = new Color(0.7f, 0.7f, 0.7f);
+            labelText.alignment = TextAlignmentOptions.Right;
+            
+            RectTransform labelRect = labelGO.GetComponent<RectTransform>();
+            labelRect.anchorMin = new Vector2(0.02f, 0.2f + i * 0.12f);
+            labelRect.anchorMax = new Vector2(0.12f, 0.2f + i * 0.12f);
+            labelRect.sizeDelta = new Vector2(0f, 20f);
+            labelRect.anchoredPosition = new Vector2(0f, 0f);
+            
+            // Draw horizontal grid line
+            GameObject gridLineGO = new GameObject($"Axis_GridLine_{i}");
+            gridLineGO.transform.SetParent(parent.transform, false);
+            
+            UnityEngine.UI.Image gridImg = gridLineGO.AddComponent<UnityEngine.UI.Image>();
+            gridImg.color = new Color(0.3f, 0.3f, 0.3f, 0.3f);
+            
+            RectTransform gridRect = gridLineGO.GetComponent<RectTransform>();
+            gridRect.anchorMin = new Vector2(0.15f, 0.2f + i * 0.12f);
+            gridRect.anchorMax = new Vector2(0.95f, 0.2f + i * 0.12f);
+            gridRect.sizeDelta = new Vector2(0f, 1f);
+        }
+        
+        // Y-axis title
+        GameObject yTitleGO = new GameObject("Axis_YTitle");
+        yTitleGO.transform.SetParent(parent.transform, false);
+        
+        TextMeshProUGUI yTitleText = yTitleGO.AddComponent<TextMeshProUGUI>();
+        yTitleText.text = "Count";
+        yTitleText.fontSize = 14;
+        yTitleText.color = new Color(0.7f, 0.7f, 0.7f);
+        yTitleText.alignment = TextAlignmentOptions.Center;
+        
+        RectTransform yTitleRect = yTitleGO.GetComponent<RectTransform>();
+        yTitleRect.anchorMin = new Vector2(0.01f, 0.4f);
+        yTitleRect.anchorMax = new Vector2(0.08f, 0.6f);
+        yTitleRect.offsetMin = Vector2.zero;
+        yTitleRect.offsetMax = Vector2.zero;
+        
+        // X-axis title
+        GameObject xTitleGO = new GameObject("Axis_XTitle");
+        xTitleGO.transform.SetParent(parent.transform, false);
+        
+        TextMeshProUGUI xTitleText = xTitleGO.AddComponent<TextMeshProUGUI>();
+        xTitleText.text = "Emergence Types";
+        xTitleText.fontSize = 14;
+        xTitleText.color = new Color(0.7f, 0.7f, 0.7f);
+        xTitleText.alignment = TextAlignmentOptions.Center;
+        
+        RectTransform xTitleRect = xTitleGO.GetComponent<RectTransform>();
+        xTitleRect.anchorMin = new Vector2(0.15f, 0.05f);
+        xTitleRect.anchorMax = new Vector2(0.95f, 0.15f);
+        xTitleRect.offsetMin = Vector2.zero;
+        xTitleRect.offsetMax = Vector2.zero;
     }
 }

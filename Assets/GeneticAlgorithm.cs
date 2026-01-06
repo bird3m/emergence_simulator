@@ -17,10 +17,15 @@ public class GeneticAlgorithm : MonoBehaviour
 
     [Header("GA Settings")]
     public int populationSize = 15;
-    public int eliteCount = 4;
+    public int eliteCount = 6;
     public float crossoverRate = 0.90f;
     public float mutationRate = 0.08f;
     public float mutationStep = 0.5f;
+    
+    [Header("Emergence Bonuses")]
+    public float flyingFitnessBonus = 0.15f;
+    public float carnivoreBonus = 0.10f;
+    public float herdBonus = 0.05f;
 
     [Header("Evaluation")]
     public float evaluationSeconds = 20f;
@@ -127,6 +132,13 @@ public class GeneticAlgorithm : MonoBehaviour
 
             // 3) Reset world
             DestroySpawned();
+            
+            // Reset all resources for next generation
+            if (spawner != null)
+            {
+                spawner.ResetAllResources();
+            }
+            
             SpawnPopulation();
         }
 
@@ -234,8 +246,17 @@ public class GeneticAlgorithm : MonoBehaviour
                 continue;
             }
 
-            // Fitness directly from Traits health
-            population[i].fitness = t.Fitness01();
+            // Base fitness from health/energy
+            float baseFitness = t.Fitness01();
+            
+            // Add bonuses for beneficial emergences
+            float emergenceBonus = 0f;
+            if (t.can_fly) emergenceBonus += flyingFitnessBonus;
+            if (t.is_carnivore) emergenceBonus += carnivoreBonus;
+            if (t.can_herd) emergenceBonus += herdBonus;
+            
+            // Final fitness (clamped to [0,1])
+            population[i].fitness = Mathf.Clamp01(baseFitness + emergenceBonus);
         }
     }
 
@@ -310,11 +331,11 @@ public class GeneticAlgorithm : MonoBehaviour
             float lower = Mathf.Min(parent1[i], parent2[i]);
             float upper = Mathf.Max(parent1[i], parent2[i]);
 
-            // Blend gene within the bounds with random factor, ensuring it's within [-1, 1]
+            // Blend gene within the bounds with random factor
             child[i] = lower + alpha * (upper - lower) * UnityEngine.Random.Range(0f, 1f);
 
-            // Ensure the heuristic stays within bounds [-1, 1]
-            child[i] = Mathf.Clamp(child[i], -1f, 1f);
+            // Clamp based on gene index - heuristics are [-1,1], others are [0,1]
+            child[i] = ClampGene(i, child[i]);
         }
 
         return child;
@@ -332,8 +353,8 @@ public class GeneticAlgorithm : MonoBehaviour
                 float delta = UnityEngine.Random.Range(-mutationStep, mutationStep);
                 chrom[i] += delta;
 
-                // Ensure the heuristic stays within bounds [-1, 1]
-                chrom[i] = Mathf.Clamp(chrom[i], -1f, 1f);  // Ensure heuristic stays within bounds
+                // Clamp based on gene index - heuristics are [-1,1], others are [0,1]
+                chrom[i] = ClampGene(i, chrom[i]);
             }
         }
     }

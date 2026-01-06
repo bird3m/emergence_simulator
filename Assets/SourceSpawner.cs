@@ -113,4 +113,28 @@ public class SourceSpawner : MonoBehaviour
 
         return false;
     }
+    
+    public void ResetAllResources()
+    {
+        // Clear pending respawns
+        pending.Clear();
+        
+        // Destroy all existing resources
+        resource[] allResources = FindObjectsOfType<resource>();
+        foreach (resource r in allResources)
+        {
+            if (r != null && r.gameObject != null)
+            {
+                Destroy(r.gameObject);
+            }
+        }
+        
+        // Spawn fresh resources
+        for (int i = 0; i < initialCount; i++)
+        {
+            SpawnOne(Random.Range(5f, 15f));
+        }
+        
+        Debug.Log($"Resources reset: {initialCount} new resources spawned");
+    }
 }
