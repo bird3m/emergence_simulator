@@ -147,6 +147,14 @@ public class Traits : MonoBehaviour
         return Mathf.Clamp(speed, 0.1f, 5f);
     }
 
+    public void InitializeEnergy()
+    {
+        // Kütle arttıkça enerji kapasitesi katlanarak artsın
+        maxEnergy = 50f + (250f * Mathf.Pow(mass, 2)); 
+        currentEnergy = maxEnergy * 0.8f;
+    }
+
+    // 2. Metabolizmayı "Açlık Hızı" Yap, Kasları "Hız" Yap
     public float GetBaselineEnergyDrain()
     {
         // SUPER OP CARNIVORE: Carnivores have NO baseline drain (only movement costs)
@@ -284,20 +292,6 @@ public class Traits : MonoBehaviour
     // ---------------------------
     // Energy + fitness
     // ---------------------------
-
-    public void InitializeEnergy()
-    {
-       
-        const float BASE_ENERGY = 50f;
-        
-        // MaxEnergy scales with MASS SQUARED (kütle artınca kapasitesi üstel artar)
-        // mass=0.5 -> 50 + 12.5 = 62.5
-        // mass=1.0 -> 50 + 50 = 100
-        float massSquared = mass * mass;
-        maxEnergy = BASE_ENERGY + (50f * massSquared) + (50f * metabolic_rate);
-        
-        currentEnergy = maxEnergy * 0.4f;
-    }
 
     public void Eat(float energy)
     {
