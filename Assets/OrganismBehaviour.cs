@@ -62,6 +62,21 @@ public class OrganismBehaviour : MonoBehaviour
 
     private float nextRepathTime = 0f;
     private float nextSearchTime = 0f;
+    
+    // Cache of nearby carnivores for cautious pathing (performance optimization)
+    private List<OrganismBehaviour> nearbyCarnivores = new List<OrganismBehaviour>();
+    private float carnivoreCheckRadius = 20f; // Only check carnivores within this radius
+    
+    [Header("Cautious Pathing")]
+    [Tooltip("Enable prey avoidance of carnivores (performance cost)")]
+    public bool enableCautiousPathing = false;
+    
+    [Header("Debug Seed")]
+    [Tooltip("If true, randomly mark some organisms as carnivores at Start for testing")]
+    public bool seedInitialCarnivores = true;
+    [Range(0f,1f)] public float initialCarnivoreFraction = 0.10f;
+
+    
 
 
 
@@ -72,7 +87,6 @@ public class OrganismBehaviour : MonoBehaviour
         terrain = FindObjectOfType<global::Terrain>();
         if (terrain == null)
         {
-            Debug.LogError("Terrain not found in the scene!");
             enabled = false;
             return;
         }
@@ -89,10 +103,33 @@ public class OrganismBehaviour : MonoBehaviour
         accumulatedRealEffort = 0f;
 
         // traits cache (sende public ama null kalabiliyor)
-        if (traits == null) 
+        if (traits == null)
             traits = GetComponent<Traits>();
 
         speed = traits.GetSpeed(traits.PowerToWeight);
+
+        // Reduce carnivore detection/interaction border so predators have smaller personal borders
+        if (traits != null && traits.is_carnivore)
+        {
+            border *= 0.6f;
+        }
+        
+
+        // Optional: seed a fraction of organisms as carnivores at start for visual testing
+        if (seedInitialCarnivores && traits != null)
+        {
+            try
+            {
+                if (UnityEngine.Random.value < initialCarnivoreFraction)
+                {
+                    traits.is_carnivore = true;
+                }
+            }
+            catch (Exception)
+            {
+                // ignore
+            }
+        }
 
             // cache original sprite and initialize sprite state (carnivore has priority)
             var sr = GetComponent<SpriteRenderer>();
@@ -117,6 +154,15 @@ public class OrganismBehaviour : MonoBehaviour
         float j = UnityEngine.Random.Range(0f, thinkJitter);
         nextRepathTime = Time.time + j;
         nextSearchTime = Time.time + j;
+
+        // Register in central registry for other systems to query (avoids FindObjectsOfType)
+        try { GeneticAlgorithm.RegisterOrganism(this); } catch (Exception) { }
+    }
+
+    private void OnDestroy()
+    {
+        // Unregister from central registry when destroyed
+        try { GeneticAlgorithm.UnregisterOrganism(this); } catch (Exception) { }
     }
 
 
@@ -185,6 +231,15 @@ public class OrganismBehaviour : MonoBehaviour
                 // If carnivore: do NOT fallback to sources (only prey)
                 if (currentTarget == null && (traits == null || !traits.is_carnivore))
                     currentTarget = FindClosestSourceInRange();
+                
+                // Cautious pathing: skip targets too close to carnivores
+                if (enableCautiousPathing && currentTarget != null && traits != null && !traits.is_carnivore)
+                {
+                    if (IsTargetNearCarnivore(currentTarget.transform.position))
+                    {
+                        currentTarget = null; // Skip this target, will search again next cycle
+                    }
+                }
 
                 if (currentTarget != null)
                 {
@@ -197,7 +252,11 @@ public class OrganismBehaviour : MonoBehaviour
                 }
             }
         }
-        else
+
+        
+
+        // Handle current target only if it exists (avoid NullReference)
+        if (currentTarget != null)
         {
             // if target destroyed
             if (!currentTarget.activeInHierarchy)
@@ -472,7 +531,7 @@ public class OrganismBehaviour : MonoBehaviour
 
     private GameObject FindClosestSourceInRange()
     {
-        GameObject[] sources = GameObject.FindGameObjectsWithTag("Source");
+        GameObject[] sources = SourceManager.I.sources.ConvertAll(r => r.gameObject).ToArray();
 
         GameObject closest = null;
         float minDist = border;
@@ -491,17 +550,19 @@ public class OrganismBehaviour : MonoBehaviour
 
         return closest;
     }
+    
 
     private GameObject FindClosestPreyInRange()
     {
-        OrganismBehaviour[] organisms = GameObject.FindObjectsOfType<OrganismBehaviour>();
+        var organisms = GeneticAlgorithm.Organisms;
 
         OrganismBehaviour closestOb = null;
         float minDist = border;
 
-        for (int i = 0; i < organisms.Length; i++)
+        for (int i = 0; i < organisms.Count; i++)
         {
-            OrganismBehaviour ob = organisms[i];
+            var ob = organisms[i];
+            if (ob == null) continue;
 
             if (ob == this) continue;
             if (ob.traits == null) continue;
@@ -519,6 +580,8 @@ public class OrganismBehaviour : MonoBehaviour
         if (closestOb != null) return closestOb.gameObject;
         return null;
     }
+
+    
 
     private uint HeuristicForNode(PathfindingAstar.GraphNode n, Vector2 destination)
     {
@@ -573,6 +636,30 @@ public class OrganismBehaviour : MonoBehaviour
         {
             SetRandomWanderTarget();
         }
+    }
+
+    private bool IsTargetNearCarnivore(Vector2 targetPos)
+    {
+        var regs = GeneticAlgorithm.Organisms;
+        if (regs == null) return false;
+        
+        float avoidDist = border * 1.5f; // Stay away from targets near carnivores
+        float avoidDistSq = avoidDist * avoidDist;
+        
+        for (int i = 0; i < regs.Count; i++)
+        {
+            var ob = regs[i];
+            if (ob == null || ob == this) continue;
+            if (ob.traits == null || !ob.traits.is_carnivore) continue;
+            
+            float distSq = (targetPos - (Vector2)ob.transform.position).sqrMagnitude;
+            if (distSq < avoidDistSq)
+            {
+                return true; // Target is too close to a carnivore
+            }
+        }
+        
+        return false;
     }
 
     //---Slop Calculation
@@ -668,12 +755,6 @@ public class OrganismBehaviour : MonoBehaviour
 
         float avgSlope = totalPhysicalSlope / lastPath.Count;
 
-        Debug.Log($"<color=cyan>[PATH ANALYSIS]</color> " +
-                  $"Steps:{lastPath.Count} | " +
-                  $"RealCost:{totalRealCost} | " +
-                  $"AvgSlope:{avgSlope:F3} | " +
-                  $"Uphill:{uphillSteps} Down:{downhillSteps} | " +
-                  $"Genes [U:{traits.upperSlopeHeuristic:F2} L:{traits.lowerSlopeHeuristic:F2}] | " +
-                  $"Energy:{traits.currentEnergy:F1}/{traits.maxEnergy:F1}");
+        // (debug logs removed)
     }
 }

@@ -38,7 +38,7 @@ private void Start()
 {
     if (terrain == null)
     {
-        Debug.LogError("SlopeArrowRenderer2D: terrain reference is missing.");
+        // Debug log removed
         return;
     }
 
@@ -58,7 +58,7 @@ private void Start()
     {
         if (terrain == null)
         {
-            Debug.LogError("SlopeArrowRenderer2D: terrain reference is missing.");
+            // Debug log removed
             return;
         }
 

@@ -33,6 +33,21 @@ public class GeneticAlgorithm : MonoBehaviour
     private List<Individual> population = new List<Individual>();
     private List<GameObject> spawned = new List<GameObject>();
 
+    // Central registry of active organisms to avoid FindObjectsOfType calls.
+    public static List<OrganismBehaviour> Organisms = new List<OrganismBehaviour>();
+
+    public static void RegisterOrganism(OrganismBehaviour ob)
+    {
+        if (ob == null) return;
+        if (!Organisms.Contains(ob)) Organisms.Add(ob);
+    }
+
+    public static void UnregisterOrganism(OrganismBehaviour ob)
+    {
+        if (ob == null) return;
+        Organisms.Remove(ob);
+    }
+
     private float timer = 0f;
     private int generation = 0;
     private System.Random rng = new System.Random();
@@ -56,7 +71,7 @@ public class GeneticAlgorithm : MonoBehaviour
        terrain = FindObjectOfType<global::Terrain>();
         if (terrain == null)
         {
-            Debug.LogError("Terrain not found!");
+            // Debug log removed
             enabled = false;
             return;
         }
@@ -123,7 +138,7 @@ public class GeneticAlgorithm : MonoBehaviour
 
 
             float avgFitness = GetAverageFitness(population);
-            Debug.Log($"Generation {generation} | average fitness: {avgFitness:F3}");
+            // debug log removed
             
             population = NextGeneration(population);
             generation++;
@@ -181,7 +196,7 @@ public class GeneticAlgorithm : MonoBehaviour
             Traits t = go.GetComponent<Traits>();
             if (t == null)
             {
-                Debug.LogError("Prefab missing Traits component!");
+                // debug log removed
                 continue;
             }
 

@@ -516,7 +516,7 @@ MonoBehaviour:
   respawnDelay: 0.1
   maxTries: 200
   spawnOnStart: 1
-  initialCount: 300
+  initialCount: 100
   sourceLayerMask:
     serializedVersion: 2
     m_Bits: 0
@@ -1375,10 +1375,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4dea1c63d0d9b624eb8422dfa79caf71, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::controlFlow
-  statisticsPanel: {fileID: 185917220}
-  statisticsText: {fileID: 638435201}
-  traitGraphPanel: {fileID: 1142721499}
-  emergenceGraphPanel: {fileID: 1493930508}
+  statisticsPanel: {fileID: 0}
+  statisticsText: {fileID: 0}
+  traitGraphPanel: {fileID: 0}
+  emergenceGraphPanel: {fileID: 0}
   sampleInterval: 2
 --- !u!1 &1119045632
 GameObject:

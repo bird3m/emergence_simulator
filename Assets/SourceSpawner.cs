@@ -30,8 +30,7 @@ public class SourceSpawner : MonoBehaviour
         if (terrain == null)
             terrain = FindObjectOfType<global::Terrain>();
 
-        if (sourcePrefab == null)
-            Debug.LogError("ResourceRespawnManager: sourcePrefab is not set!");
+      
     }
 
     private void Start()

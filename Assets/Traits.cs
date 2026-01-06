@@ -29,6 +29,18 @@ public class Traits : MonoBehaviour
     public bool is_carnivore;
     #endregion
 
+    [Header("Scarcity Tuning")]
+    [Tooltip("If resources per organism falls below this ratio, aggression is boosted")]
+    public float scarcityThreshold = 0.5f;
+    [Tooltip("Maximum additional aggression added when scarcity is extreme (0..1)")]
+    public float maxAggressionBoost = 0.6f;
+
+    [Header("Scavenger Tuning")]
+    [Tooltip("Carcass/org ratio above which scavenging preference increases")]
+    public float carcassThresholdRatio = 0.02f;
+    [Tooltip("Amount to boost effective risk_aversion/danger_weight and lower aggression when carcasses abundant (0..1)")]
+    public float carcassBoost = 0.4f;
+
     private bool loggedCarnivoreChecked = false;
 
    
@@ -161,10 +173,56 @@ public class Traits : MonoBehaviour
     public void EvaluateEmergences()
     {
         can_fly = (EffectiveMass <= 0.55f) && (PowerToWeight >= 0.70f) && (metabolic_rate >= 0.65f);
-        can_herd = (risk_aversion >= 0.60f) && (danger_weight >= 0.60f);
+        // Herding emergence removed: no organisms will gain `can_herd`
+        can_herd = false;
 
-        is_carnivore = (agression >= 0.60f) && (PowerToWeight >= 0.55f) && (metabolic_rate >= 0.45f) && (risk_aversion <= 0.70f);
-        is_scavenging = (risk_aversion >= 0.55f) && (danger_weight >= 0.55f) && (agression <= 0.65f);
+        // Increase effective aggression when resources per organism is low
+        float effectiveAggression = agression;
+        try
+        {
+            if (SourceManager.I != null)
+            {
+                int resourceCount = SourceManager.I.sources.Count;
+                int orgCount = (GeneticAlgorithm.Organisms != null) ? GeneticAlgorithm.Organisms.Count : GameObject.FindObjectsOfType<OrganismBehaviour>().Length;
+                float ratio = (float)resourceCount / Mathf.Max(1, orgCount);
+
+                if (ratio < scarcityThreshold)
+                {
+                    float boost = ((scarcityThreshold - ratio) / scarcityThreshold) * maxAggressionBoost;
+                    effectiveAggression = Mathf.Clamp01(agression + boost);
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // ignore and use base aggression
+        }
+
+        is_carnivore = (effectiveAggression >= 0.60f) && (PowerToWeight >= 0.55f) && (metabolic_rate >= 0.45f) && (risk_aversion <= 0.70f);
+        // Adjust scavenging tendency if many carcasses exist
+        float effectiveRiskAversion = risk_aversion;
+        float effectiveDangerWeight = danger_weight;
+        float effectiveAgressionForScav = agression;
+
+        try
+        {
+            int carcassCount = GameObject.FindObjectsOfType<Carcass>().Length;
+            int orgCount = (GeneticAlgorithm.Organisms != null) ? GeneticAlgorithm.Organisms.Count : GameObject.FindObjectsOfType<OrganismBehaviour>().Length;
+            float carcassRatio = (float)carcassCount / Mathf.Max(1, orgCount);
+
+            if (carcassRatio >= carcassThresholdRatio)
+            {
+                effectiveRiskAversion = Mathf.Clamp01(risk_aversion + carcassBoost);
+                effectiveDangerWeight = Mathf.Clamp01(danger_weight + carcassBoost);
+                effectiveAgressionForScav = Mathf.Clamp01(agression - carcassBoost);
+            }
+        }
+        catch (Exception)
+        {
+            // ignore and use base genes
+        }
+
+        is_scavenging = (effectiveRiskAversion >= 0.55f) && (effectiveDangerWeight >= 0.55f) && (effectiveAgressionForScav <= 0.65f);
 
         // Debug: log the numeric values used for carnivore decision once so we can see why none emerge
         try
