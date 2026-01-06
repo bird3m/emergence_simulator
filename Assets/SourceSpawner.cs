@@ -61,41 +61,8 @@ public class SourceSpawner : MonoBehaviour
 
     public void ScheduleRespawn(float nutrition)
     {
-        // Adjust respawn behavior based on current scarcity: if resources per organism
-        // is low, make respawn slower or sometimes skip it to simulate depletion.
-        float finalDelay = respawnDelay;
-        bool skip = false;
-
-        try
-        {
-            if (SourceManager.I != null)
-            {
-                int resourceCount = SourceManager.I.sources.Count;
-                int orgCount = GameObject.FindObjectsOfType<OrganismBehaviour>().Length;
-                float ratio = (float)resourceCount / Mathf.Max(1, orgCount);
-
-                // If scarcity is high (ratio < 0.5), increase delay up to 3x and possibly skip respawn
-                float threshold = 0.5f;
-                if (ratio < threshold)
-                {
-                    float factor = 1f + (threshold - ratio) / threshold * 2.0f; // 1..3
-                    finalDelay *= factor;
-
-                    float skipChance = Mathf.Clamp01(0.35f + (threshold - ratio));
-                    if (Random.value < skipChance)
-                        skip = true;
-                }
-            }
-        }
-        catch (System.Exception)
-        {
-            // ignore and schedule normally
-        }
-
-        if (skip) return;
-
         Pending p;
-        p.time = Time.time + finalDelay;
+        p.time = Time.time + respawnDelay;
         p.nutrition = nutrition;
         pending.Add(p);
     }

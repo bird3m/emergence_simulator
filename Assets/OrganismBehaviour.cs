@@ -49,7 +49,7 @@ public class OrganismBehaviour : MonoBehaviour
 
 
     [Header("Debug")]
-    public bool debugCosts = true;
+    public bool debugCosts = false;
     public float debugLogChance = 0.02f; // %2 of frames
 
     private PathfindingAstar.GraphNode lastCellNode = null;
@@ -153,7 +153,8 @@ public class OrganismBehaviour : MonoBehaviour
                 else if (originalSprite != null)
                     sr.sprite = originalSprite;
 
-                // (debug logs removed)
+
+
             }
 
         float j = UnityEngine.Random.Range(0f, thinkJitter);
@@ -200,8 +201,6 @@ public class OrganismBehaviour : MonoBehaviour
     {
 
 
-        if (lastPath != null && lastPath.Count > 0) DebugPathCosts();
-
         if (!enabled) return;
         if (allNodes == null || allNodes.Count == 0) return;
 
@@ -223,8 +222,6 @@ public class OrganismBehaviour : MonoBehaviour
                 if (traits != null && traits.is_carnivore)
                 {
                     currentTarget = FindClosestPreyInRange();
-
-                    // (debug logs removed)
                 }
 
                 // fallback to sources if no prey or not carnivore
@@ -456,10 +453,10 @@ public class OrganismBehaviour : MonoBehaviour
             if (targetTraits != null && traits != null && traits.is_carnivore)
             {
                 // Kill prey and convert to resource
-                    try
-                    {
-                        targetTraits.DieIntoResource();
-                    }
+                try
+                {
+                    targetTraits.DieIntoResource();
+                }
                 catch (Exception)
                 {
                     // ignore
@@ -498,10 +495,6 @@ public class OrganismBehaviour : MonoBehaviour
 
             mult = Mathf.Max(minEnergyMultiplier, mult);
         }
-            else
-            {
-                // (debug logs removed)
-            }
 
         float effort = movedDistance * mult;
 
@@ -523,17 +516,14 @@ public class OrganismBehaviour : MonoBehaviour
                     if (nowIsCarnivore && carnivoreSprite != null)
                     {
                         sr2.sprite = carnivoreSprite;
-                        
                     }
                     else if (nowCanFly && flyingSprite != null)
                     {
                         sr2.sprite = flyingSprite;
-                        
                     }
                     else
                     {
                         sr2.sprite = originalSprite;
-                        
                     }
                 }
 
@@ -581,7 +571,6 @@ public class OrganismBehaviour : MonoBehaviour
 
         if (result.found && result.path != null)
         {
-            LogImmediatePathAnalysis(result);
             lastPath.Clear();
             lastPath.AddRange(result.path);
             foreach (var node in result.path) pathPoints.Add(GetNodePosition(node));
@@ -830,21 +819,21 @@ public class OrganismBehaviour : MonoBehaviour
         float dist = Vector2.Distance(np, destination);
 
 
-        // If organism can fly, ignore slope in heuristic (use straight distance)
+        // If organism can fly, ignore slope in heuristic (use straight distance with lower cost)
         if (traits != null && traits.can_fly)
         {
-            float hFly = dist * 10f * (1f + SlopeBiasFactor(0f));
+            float hFly = dist * 5f * (1f + SlopeBiasFactor(0f));
             hFly = Mathf.Clamp(hFly, 1f, 100000f);
 
-            // (debug logs removed)
+            if (debugCosts && UnityEngine.Random.value < debugLogChance)
+                //Debug.Log(gameObject.name + ": Heuristic - flying branch at node " + n.name + ", dist=" + dist.ToString("F2") + ", h=" + hFly.ToString("F2"));
 
             return (uint)Mathf.RoundToInt(hFly);
         }
 
-        // Slope ve gene bias hesaplamalarını yap
+        // Slope hesaplaması (genetic bias disabled)
         float s = terrain.GetSlope(nx, ny);
         float slopeNorm = NormalizedAbsSlope(s);
-        float bias = SlopeBiasFactor(s);  // Genetic preference [-maxBias, +maxBias]
 
         // Base heuristic: Manhattan-like distance in cost units
         float baseH = dist * 10f;
@@ -853,14 +842,8 @@ public class OrganismBehaviour : MonoBehaviour
         // Uphill is more costly, downhill is less costly
         float slopeInfluence = (s > 0f) ? (1.0f + 1.5f * slopeNorm) : (1.0f - 0.3f * slopeNorm);
 
-        // Apply genetic bias
-        // Positive bias (gene closer to +1) = organism PREFERS this slope direction
-        //   -> LOWER heuristic (thinks path is cheaper than it is)
-        // Negative bias (gene closer to -1) = organism AVOIDS this slope direction  
-        //   -> HIGHER heuristic (thinks path is more expensive than it is)
-        float biasFactor = 1.0f - bias;  // Reverse sign: positive gene = lower h
-
-        float h = baseH * slopeInfluence * biasFactor;
+        // Heuristic genes disabled - no genetic bias applied
+        float h = baseH * slopeInfluence;
 
         return (uint)Mathf.Clamp(h, 1f, 100000f);
     }
@@ -902,15 +885,12 @@ public class OrganismBehaviour : MonoBehaviour
 
     /// <summary>
     /// Returns signed bias multiplier from traits depending on slope sign.
-    /// uphill -> use upperSlopeHeuristic
-    /// downhill -> use lowerSlopeHeuristic
-    /// Then scale by maxHeuristicBias (e.g. 0.10 => +-10%).
+    /// DISABLED: Heuristic genes have no effect.
     /// </summary>
     private float SlopeBiasFactor(float slope)
     {
-        float gene = (slope >= 0f) ? traits.upperSlopeHeuristic : traits.lowerSlopeHeuristic;
-        // gene in [-1,1], scale to [-maxHeuristicBias, +maxHeuristicBias]
-        return gene * traits.maxHeuristicBias;
+        // Heuristic effect disabled - always return 0
+        return 0f;
     }
 
     /// <summary>
@@ -923,12 +903,13 @@ public class OrganismBehaviour : MonoBehaviour
     {
         ParseNodeXY(toNode, out int toX, out int toY);
         
-        // If organism can fly, ignore slope and use straight distance base cost
+        // If organism can fly, ignore slope and use much lower cost
         if (traits != null && traits.can_fly)
         {
-            // (debug logs removed)
+            if (debugCosts && UnityEngine.Random.value < debugLogChance)
+                //Debug.Log(gameObject.name + ": PerceivedStepCost - flying at cell " + toX + "," + toY + " -> cost=5");
 
-            return 10u; // base cost per step without slope penalty
+            return 5u; // Flying costs half of base cost - much cheaper than walking
         }
 
         float s = terrain.GetSlope(toX, toY);              // gerçek eğim
@@ -979,42 +960,6 @@ public class OrganismBehaviour : MonoBehaviour
 
         float avgSlope = totalPhysicalSlope / lastPath.Count;
 
-        // (debug logs removed)
-    }
-    private void LogImmediatePathAnalysis(PathfindingAstar.AStarResult result)
-    {
-        // KONTROL 1: Fonksiyonun tetiklendiğini görmek için (Siyah renk)
-        // (debug removed)
-
-        if (result.path == null) {
-            return;
-        }
-
-        if (result.path.Count < 2) return;
-
-        // Verileri topluyoruz
-        int count = result.path.Count;
-        float totalSlope = 0f;
-        uint totalCost = 0;
-
-        for (int i = 0; i < count; i++)
-        {
-            var node = result.path[i];
-            totalCost += PerceivedStepCost(node);
-            
-            ParseNodeXY(node, out int x, out int y);
-            totalSlope += terrain.GetSlope(x, y);
-        }
-
-        // LORDUM, BU LOG ÇIKMAZSA UNITY BOZUKTUR:
-        // Renk kodunu kaldırıp en basit haliyle yazdırıyoruz.
-        string finalReport = "PATH_REPORT -> ID:" + GetHashCode() + 
-                            " Nodes:" + count + 
-                            " Cost:" + totalCost + 
-                            " AvgSlope:" + (totalSlope / count).ToString("F3") +
-                            " Genes: " + traits.upperSlopeHeuristic.ToString("F2");
-
-        // LogType.Log kullanarak en yüksek öncelikle bastırıyoruz
         // (debug logs removed)
     }
 }

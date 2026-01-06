@@ -22,15 +22,11 @@ public class Traits : MonoBehaviour
     [Range(-1f, 1f)] public float lowerSlopeHeuristic;
     [Range(0f, 1f)] public float danger_weight;
 
-    // independent trait
-    [Range(0f, 1f)] public float camouflage;
-
     // emergences (derived, NOT genes)
     public bool can_fly;
     public bool can_herd;
     public bool is_scavenging;
     public bool is_carnivore;
-    public bool can_camouflage;
     #endregion
 
     [Header("Scarcity Tuning")]
@@ -38,6 +34,12 @@ public class Traits : MonoBehaviour
     public float scarcityThreshold = 0.5f;
     [Tooltip("Maximum additional aggression added when scarcity is extreme (0..1)")]
     public float maxAggressionBoost = 0.6f;
+
+    [Header("Scavenger Tuning")]
+    [Tooltip("Carcass/org ratio above which scavenging preference increases")]
+    public float carcassThresholdRatio = 0.02f;
+    [Tooltip("Amount to boost effective risk_aversion/danger_weight and lower aggression when carcasses abundant (0..1)")]
+    public float carcassBoost = 0.4f;
 
     private bool loggedCarnivoreChecked = false;
 
@@ -103,7 +105,6 @@ public class Traits : MonoBehaviour
         lowerSlopeHeuristic = Mathf.Clamp(chromosm[6], -1f, 1f);
 
         danger_weight = Mathf.Clamp01(chromosm[7]);
-        camouflage = Mathf.Clamp01(chromosm[8]);
     }
 
     private void RecomputeAll()
@@ -166,13 +167,11 @@ public class Traits : MonoBehaviour
     // ---------------------------
     // Emergence checks
     // Final emergences:
-    // can_herd, can_fly, is_scavenging, is_carnivore, can_camouflage
+    // can_herd, can_fly, is_scavenging, is_carnivore
     // ---------------------------
 
     public void EvaluateEmergences()
     {
-        can_camouflage = (camouflage >= 0.60f);
-
         can_fly = (EffectiveMass <= 0.55f) && (PowerToWeight >= 0.70f) && (metabolic_rate >= 0.65f);
         can_herd = (risk_aversion >= 0.60f) && (danger_weight >= 0.60f);
 
@@ -199,14 +198,37 @@ public class Traits : MonoBehaviour
         }
 
         is_carnivore = (effectiveAggression >= 0.60f) && (PowerToWeight >= 0.55f) && (metabolic_rate >= 0.45f) && (risk_aversion <= 0.70f);
-        is_scavenging = (risk_aversion >= 0.55f) && (danger_weight >= 0.55f) && (agression <= 0.65f);
+        // Adjust scavenging tendency if many carcasses exist
+        float effectiveRiskAversion = risk_aversion;
+        float effectiveDangerWeight = danger_weight;
+        float effectiveAgressionForScav = agression;
+
+        try
+        {
+            int carcassCount = GameObject.FindObjectsOfType<Carcass>().Length;
+            int orgCount = GameObject.FindObjectsOfType<OrganismBehaviour>().Length;
+            float carcassRatio = (float)carcassCount / Mathf.Max(1, orgCount);
+
+            if (carcassRatio >= carcassThresholdRatio)
+            {
+                effectiveRiskAversion = Mathf.Clamp01(risk_aversion + carcassBoost);
+                effectiveDangerWeight = Mathf.Clamp01(danger_weight + carcassBoost);
+                effectiveAgressionForScav = Mathf.Clamp01(agression - carcassBoost);
+            }
+        }
+        catch (Exception)
+        {
+            // ignore and use base genes
+        }
+
+        is_scavenging = (effectiveRiskAversion >= 0.55f) && (effectiveDangerWeight >= 0.55f) && (effectiveAgressionForScav <= 0.65f);
 
         // Debug: log the numeric values used for carnivore decision once so we can see why none emerge
         try
         {
             if (!loggedCarnivoreChecked)
             {
-                // debug removed
+                //Debug.Log(gameObject.name + ": EvaluateEmergences values -> agression=" + agression.ToString("F2") + ", PowerToWeight=" + PowerToWeight.ToString("F2") + ", metabolic_rate=" + metabolic_rate.ToString("F2") + ", risk_aversion=" + risk_aversion.ToString("F2") + " => is_carnivore=" + is_carnivore);
                 loggedCarnivoreChecked = true;
             }
         }
@@ -220,12 +242,12 @@ public class Traits : MonoBehaviour
         {
             if (can_fly && !loggedCanFly)
             {
-                // debug removed
+                //Debug.Log(gameObject.name + ": can_fly emerged (EffectiveMass=" + EffectiveMass.ToString("F2") + ", PowerToWeight=" + PowerToWeight.ToString("F2") + ")");
                 loggedCanFly = true;
             }
             else if (!can_fly && loggedCanFly)
             {
-                // debug removed
+                //Debug.Log(gameObject.name + ": can_fly lost");
                 loggedCanFly = false;
             }
         }
@@ -241,11 +263,11 @@ public class Traits : MonoBehaviour
 
     public void InitializeEnergy()
     {
-        const float BASE_ENERGY = 45f;
-        const float METAB_ENERGY_BONUS = 70f;
+        const float BASE_ENERGY = 70f;
+        const float METAB_ENERGY_BONUS = 120f;
 
         maxEnergy = BASE_ENERGY + METAB_ENERGY_BONUS * metabolic_rate;
-        currentEnergy = maxEnergy * 0.45f; // start a bit under half to encourage mild attrition
+        currentEnergy = maxEnergy * 0.75f;
 
          flag = true;
         
@@ -328,7 +350,6 @@ public class Traits : MonoBehaviour
     public void DieIntoResource()
     {
         hasBecomeCarcass = true;
-        // log removed per global debug-silencing (emergence logs preserved)
 
         // Stop movement (disable OrganismBehaviour)
         OrganismBehaviour ob = GetComponent<OrganismBehaviour>();
