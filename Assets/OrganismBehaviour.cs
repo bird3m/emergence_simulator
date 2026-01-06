@@ -353,13 +353,8 @@ public class OrganismBehaviour : MonoBehaviour
         }
         else
         {
-            float slope = CurrentCellSlope();
-            float slope01 = Mathf.Clamp01(Mathf.Abs(slope) / Mathf.Max(0.0001f, terrain.maxAbsSlope));
-
-            if (slope > 0f) mult = 1f + slope01 * uphillExtra;
-            else if (slope < 0f) mult = 1f - slope01 * downhillDiscount;
-
-            mult = Mathf.Max(minEnergyMultiplier, mult);
+            // Slope hesaplaması devre dışı - sabit enerji maliyeti
+            mult = 1f;
         }
 
         float effort = movedDistance * mult;
@@ -465,7 +460,10 @@ public class OrganismBehaviour : MonoBehaviour
              return;
 
         Vector2 target = pathPoints[pathIndex];
-        transform.position = Vector2.MoveTowards(transform.position, target, speed * Time.deltaTime); 
+        transform.position = Vector2.MoveTowards(transform.position, target, speed * Time.deltaTime);
+        
+        // Map sınırları içinde tut
+        ClampPositionToMap();
 
         if (Vector2.Distance(transform.position, target) < reachTolerance)
         {
@@ -488,6 +486,23 @@ public class OrganismBehaviour : MonoBehaviour
             pathPoints.Clear();
             pathIndex = 0;
         }
+    }
+
+    private void ClampPositionToMap()
+    {
+        if (terrain == null) return;
+        
+        // Map sınırlarını hesapla (terrain grid'inin dünya koordinatlarındaki konumu)
+        Vector3 minCorner = terrain.CellCenterWorld(0, 0);
+        Vector3 maxCorner = terrain.CellCenterWorld(terrain.width - 1, terrain.height - 1);
+        
+        // Cell size kadar padding ekle (kenarlardan içerde tut)
+        float padding = terrain.cellSize * 0.5f;
+        
+        Vector3 pos = transform.position;
+        pos.x = Mathf.Clamp(pos.x, minCorner.x - padding, maxCorner.x + padding);
+        pos.y = Mathf.Clamp(pos.y, minCorner.y - padding, maxCorner.y + padding);
+        transform.position = pos;
     }
 
 
@@ -620,7 +635,7 @@ public class OrganismBehaviour : MonoBehaviour
         // If organism can fly, ignore slope in heuristic (use straight distance with lower cost)
         if (traits != null && traits.can_fly)
         {
-            float hFly = dist * 5f * (1f + SlopeBiasFactor(0f));
+            float hFly = dist * 5f;
             hFly = Mathf.Clamp(hFly, 1f, 100000f);
 
             if (debugCosts && UnityEngine.Random.value < debugLogChance)
@@ -629,19 +644,12 @@ public class OrganismBehaviour : MonoBehaviour
             return (uint)Mathf.RoundToInt(hFly);
         }
 
-        // Slope hesaplaması (genetic bias disabled)
-        float s = terrain.GetSlope(nx, ny);
-        float slopeNorm = NormalizedAbsSlope(s);
-
+        // Slope hesaplaması devre dışı - düz mesafe kullan
         // Base heuristic: Manhattan-like distance in cost units
         float baseH = dist * 10f;
 
-        // Slope influence on estimate
-        // Uphill is more costly, downhill is less costly
-        float slopeInfluence = (s > 0f) ? (1.0f + 1.5f * slopeNorm) : (1.0f - 0.3f * slopeNorm);
-
-        // Heuristic genes disabled - no genetic bias applied
-        float h = baseH * slopeInfluence;
+        // Slope influence devre dışı
+        float h = baseH;
 
         return (uint)Mathf.Clamp(h, 1f, 100000f);
     }
@@ -651,7 +659,21 @@ public class OrganismBehaviour : MonoBehaviour
     {
         pathPoints.Clear();
 
-        Vector2 randomPoint = (Vector2)transform.position + UnityEngine.Random.insideUnitCircle * wanderRadius;
+        // Map sınırları içinde random pozisyon seç
+        Vector2 currentPos = transform.position;
+        Vector2 randomPoint = currentPos + UnityEngine.Random.insideUnitCircle * wanderRadius;
+        
+        // Wander target'ı da map içinde tut
+        if (terrain != null)
+        {
+            Vector3 minCorner = terrain.CellCenterWorld(0, 0);
+            Vector3 maxCorner = terrain.CellCenterWorld(terrain.width - 1, terrain.height - 1);
+            float padding = terrain.cellSize * 0.5f;
+            
+            randomPoint.x = Mathf.Clamp(randomPoint.x, minCorner.x - padding, maxCorner.x + padding);
+            randomPoint.y = Mathf.Clamp(randomPoint.y, minCorner.y - padding, maxCorner.y + padding);
+        }
+        
         pathPoints.Add(randomPoint);
 
         pathIndex = 0;
@@ -734,16 +756,11 @@ public class OrganismBehaviour : MonoBehaviour
             return 5u; // Flying costs half of base cost - much cheaper than walking
         }
 
-        float s = terrain.GetSlope(toX, toY);              // gerçek eğim
-        float t = NormalizedAbsSlope(s);                  // 0..1 arası normalize edilmiş eğim
-        float bias = SlopeBiasFactor(s);                  // genetik bias (eğim yönüne göre)
-
-        // Temel yol maliyeti
+        // Temel yol maliyeti - slope hesaplamaları devre dışı
         float baseStep = 10f; 
 
-        // Yokuş yukarı (s > 0) ise maliyet katlanır, yokuş aşağı ise azalır
-        // Bu FİZİKSEL gerçek - tüm organizmalar için aynı
-        float slopeMultiplier = (s > 0f) ? (1.0f + 2.0f * t) : (1.0f - 0.5f * t);
+        // Slope multiplier devre dışı - sabit maliyet
+        float slopeMultiplier = 1.0f;
         
         // CAUTIOUS PATHING: Always cheaper pathfinding + carnivores treated as obstacles
         float cautiousCostMultiplier = 1.0f;
