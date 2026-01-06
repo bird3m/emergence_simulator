@@ -217,12 +217,12 @@ public class controlFlow : MonoBehaviour
         sb.AppendLine("\n<b><size=20>EMERGENCE STATISTICS</size></b>");
         
         int canFlyCount = allOrganisms.Count(t => t.can_fly);
-        int canHerdCount = allOrganisms.Count(t => t.can_herd);
+        int can_cautiousPathingCount = allOrganisms.Count(t => t.can_cautiousPathing);
         int isScavengingCount = allOrganisms.Count(t => t.is_scavenging);
         int isCarnivoreCount = allOrganisms.Count(t => t.is_carnivore);
 
         sb.AppendLine($"<color=#00FF00>Can Fly:</color> {canFlyCount} ({(canFlyCount * 100f / allOrganisms.Length):F1}%)");
-        sb.AppendLine($"<color=#00FF00>Can Herd:</color> {canHerdCount} ({(canHerdCount * 100f / allOrganisms.Length):F1}%)");
+        sb.AppendLine($"<color=#00BFFF>Can Cautious Pathing:</color> {can_cautiousPathingCount} ({(can_cautiousPathingCount * 100f / allOrganisms.Length):F1}%)");
         sb.AppendLine($"<color=#FF6B6B>Is Scavenging:</color> {isScavengingCount} ({(isScavengingCount * 100f / allOrganisms.Length):F1}%)");
         sb.AppendLine($"<color=#FF0000>Is Carnivore:</color> {isCarnivoreCount} ({(isCarnivoreCount * 100f / allOrganisms.Length):F1}%)");
 
@@ -361,7 +361,7 @@ public class controlFlow : MonoBehaviour
         Dictionary<string, int> emergenceCounts = new Dictionary<string, int>
         {
             { "Can Fly", allOrganisms.Count(t => t.can_fly) },
-            { "Can Herd", allOrganisms.Count(t => t.can_herd) },
+            { "Cautious Path", allOrganisms.Count(t => t.can_cautiousPathing) },
             { "Scavenging", allOrganisms.Count(t => t.is_scavenging) },
             { "Carnivore", allOrganisms.Count(t => t.is_carnivore) }
         };
@@ -568,7 +568,7 @@ public class controlFlow : MonoBehaviour
         
         // Get latest emergence counts
         var latestCounts = emergenceCountsHistory[emergenceCountsHistory.Count - 1];
-        string[] emergenceNames = new[] { "Can Fly", "Can Herd", "Scavenging", "Carnivore" };
+        string[] emergenceNames = new[] { "Can Fly", "Cautious Path", "Scavenging", "Carnivore" };
         Color[] colors = new[] {
             new Color(0.2f, 1f, 0.2f),  // Green
             new Color(0.2f, 0.8f, 1f),  // Cyan

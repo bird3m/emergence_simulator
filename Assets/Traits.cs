@@ -24,9 +24,9 @@ public class Traits : MonoBehaviour
 
     // emergences (derived, NOT genes)
     public bool can_fly;
-    public bool can_herd;
     public bool is_scavenging;
     public bool is_carnivore;
+    public bool can_cautiousPathing;
     #endregion
 
     [Header("Scarcity Tuning")]
@@ -170,14 +170,12 @@ public class Traits : MonoBehaviour
     // ---------------------------
     // Emergence checks
     // Final emergences:
-    // can_herd, can_fly, is_scavenging, is_carnivore
+    // can_fly, is_scavenging, is_carnivore, can_cautiousPathing
     // ---------------------------
 
     public void EvaluateEmergences()
     {
         can_fly = (EffectiveMass <= 0.55f) && (PowerToWeight >= 0.70f) && (metabolic_rate >= 0.65f);
-        // Herding emergence removed: no organisms will gain `can_herd`
-        can_herd = false;
 
         // Increase effective aggression when resources per organism is low
         float effectiveAggression = agression;
@@ -226,6 +224,9 @@ public class Traits : MonoBehaviour
         }
 
         is_scavenging = (effectiveRiskAversion >= 0.55f) && (effectiveDangerWeight >= 0.55f) && (effectiveAgressionForScav <= 0.65f);
+
+        // Cautious pathing: high risk aversion organisms avoid dangerous areas
+        can_cautiousPathing = (risk_aversion >= 0.60f) && !is_carnivore;
 
         // Debug: log the numeric values used for carnivore decision once so we can see why none emerge
         try

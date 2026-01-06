@@ -25,7 +25,6 @@ public class GeneticAlgorithm : MonoBehaviour
     [Header("Emergence Bonuses")]
     public float flyingFitnessBonus = 0.15f;
     public float carnivoreBonus = 0.10f;
-    public float herdBonus = 0.05f;
 
     [Header("Evaluation")]
     public float evaluationSeconds = 20f;
@@ -268,7 +267,7 @@ public class GeneticAlgorithm : MonoBehaviour
             float emergenceBonus = 0f;
             if (t.can_fly) emergenceBonus += flyingFitnessBonus;
             if (t.is_carnivore) emergenceBonus += carnivoreBonus;
-            if (t.can_herd) emergenceBonus += herdBonus;
+          
             
             // Final fitness (clamped to [0,1])
             population[i].fitness = Mathf.Clamp01(baseFitness + emergenceBonus);
