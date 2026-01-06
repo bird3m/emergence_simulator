@@ -510,7 +510,6 @@ public class OrganismBehaviour : MonoBehaviour
         return closest;
     }
 
-<<<<<<< HEAD
     private GameObject FindClosestPreyInRange()
     {
         OrganismBehaviour[] organisms = GameObject.FindObjectsOfType<OrganismBehaviour>();
@@ -539,20 +538,12 @@ public class OrganismBehaviour : MonoBehaviour
         return null;
     }
 
-=======
-    /// <summary>
-    /// Heuristic for A* - estimates remaining cost.
-    /// This includes the organism's GENETIC PREFERENCE (bias) for uphill/downhill.
-    /// Good genes = better estimates = more efficient paths = more energy saved.
-    /// </summary>
->>>>>>> bb9d7c5ef2c7d527b247aacb44eb9b6a8c457c78
     private uint HeuristicForNode(PathfindingAstar.GraphNode n, Vector2 destination)
     {
         ParseNodeXY(n, out int nx, out int ny);
         Vector2 np = GetNodePosition(n);
         float dist = Vector2.Distance(np, destination);
 
-<<<<<<< HEAD
 
         // If organism can fly, ignore slope in heuristic (use straight distance)
         if (traits != null && traits.can_fly)
@@ -567,8 +558,6 @@ public class OrganismBehaviour : MonoBehaviour
         }
 
         // Slope ve gene bias hesaplamalarını yap
-=======
->>>>>>> bb9d7c5ef2c7d527b247aacb44eb9b6a8c457c78
         float s = terrain.GetSlope(nx, ny);
         float slopeNorm = NormalizedAbsSlope(s);
         float bias = SlopeBiasFactor(s);  // Genetic preference [-maxBias, +maxBias]
@@ -648,7 +637,8 @@ public class OrganismBehaviour : MonoBehaviour
     /// </summary>
     private uint PerceivedStepCost(PathfindingAstar.GraphNode toNode)
     {
-<<<<<<< HEAD
+        ParseNodeXY(toNode, out int toX, out int toY);
+        
         // If organism can fly, ignore slope and use straight distance base cost
         if (traits != null && traits.can_fly)
         {
@@ -661,11 +651,6 @@ public class OrganismBehaviour : MonoBehaviour
         float s = terrain.GetSlope(toX, toY);              // gerçek eğim
         float t = NormalizedAbsSlope(s);                  // 0..1 arası normalize edilmiş eğim
         float bias = SlopeBiasFactor(s);                  // genetik bias (eğim yönüne göre)
-=======
-        ParseNodeXY(toNode, out int tx, out int ty);
-        float s = terrain.GetSlope(tx, ty);
-        float t = NormalizedAbsSlope(s);
->>>>>>> bb9d7c5ef2c7d527b247aacb44eb9b6a8c457c78
 
         // Temel yol maliyeti
         float baseStep = 10f; 
