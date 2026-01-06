@@ -856,6 +856,7 @@ MonoBehaviour:
   upperGraph: {fileID: 964052825}
   lowerGraph: {fileID: 1386671343}
   spawner: {fileID: 568344365}
+  alpha: 0.5
 --- !u!4 &1038267132
 Transform:
   m_ObjectHideFlags: 0

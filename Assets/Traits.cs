@@ -230,6 +230,7 @@ public class Traits : MonoBehaviour
     private void DieIntoResource()
     {
         hasBecomeCarcass = true;
+        Debug.Log("dead as hell"); 
 
         // Stop movement (disable OrganismBehaviour)
         OrganismBehaviour ob = GetComponent<OrganismBehaviour>();
