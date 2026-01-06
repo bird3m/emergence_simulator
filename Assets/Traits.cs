@@ -183,7 +183,7 @@ public class Traits : MonoBehaviour
             if (SourceManager.I != null)
             {
                 int resourceCount = SourceManager.I.sources.Count;
-                int orgCount = GameObject.FindObjectsOfType<OrganismBehaviour>().Length;
+                int orgCount = (GeneticAlgorithm.Organisms != null) ? GeneticAlgorithm.Organisms.Count : GameObject.FindObjectsOfType<OrganismBehaviour>().Length;
                 float ratio = (float)resourceCount / Mathf.Max(1, orgCount);
 
                 if (ratio < scarcityThreshold)
@@ -207,7 +207,7 @@ public class Traits : MonoBehaviour
         try
         {
             int carcassCount = GameObject.FindObjectsOfType<Carcass>().Length;
-            int orgCount = GameObject.FindObjectsOfType<OrganismBehaviour>().Length;
+            int orgCount = (GeneticAlgorithm.Organisms != null) ? GeneticAlgorithm.Organisms.Count : GameObject.FindObjectsOfType<OrganismBehaviour>().Length;
             float carcassRatio = (float)carcassCount / Mathf.Max(1, orgCount);
 
             if (carcassRatio >= carcassThresholdRatio)

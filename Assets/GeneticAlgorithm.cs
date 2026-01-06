@@ -33,6 +33,21 @@ public class GeneticAlgorithm : MonoBehaviour
     private List<Individual> population = new List<Individual>();
     private List<GameObject> spawned = new List<GameObject>();
 
+    // Central registry of active organisms to avoid FindObjectsOfType calls.
+    public static List<OrganismBehaviour> Organisms = new List<OrganismBehaviour>();
+
+    public static void RegisterOrganism(OrganismBehaviour ob)
+    {
+        if (ob == null) return;
+        if (!Organisms.Contains(ob)) Organisms.Add(ob);
+    }
+
+    public static void UnregisterOrganism(OrganismBehaviour ob)
+    {
+        if (ob == null) return;
+        Organisms.Remove(ob);
+    }
+
     private float timer = 0f;
     private int generation = 0;
     private System.Random rng = new System.Random();

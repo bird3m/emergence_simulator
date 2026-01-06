@@ -320,11 +320,6 @@ MonoBehaviour:
   can_herd: 0
   is_scavenging: 0
   is_carnivore: 0
-<<<<<<< HEAD
-  scarcityThreshold: 0.5
-  maxAggressionBoost: 0.6
-=======
->>>>>>> 3817cc593fe57eea1e6c765d12393109126e2a68
   chromosm:
   - 0
   - 0
@@ -378,17 +373,6 @@ MonoBehaviour:
   repathInterval: 0.35
   targetSearchInterval: 0.35
   thinkJitter: 0.15
-  herdDetectionRadius: 8
-  herdFleeDistance: 10
-  herdSpeedMultiplier: 1.5
-  herdDuration: 6
-  seedInitialCarnivores: 1
-  initialCarnivoreFraction: 0.1
-  herdGroupMinSize: 5
-  herdGroupRadius: 5
-  herdClusterRadius: 0.8
-  herdClusterInterval: 2
-  logHerding: 1
 --- !u!114 &3090274887604956481
 MonoBehaviour:
   m_ObjectHideFlags: 0
