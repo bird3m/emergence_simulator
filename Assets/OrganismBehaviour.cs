@@ -447,12 +447,15 @@ public class OrganismBehaviour : MonoBehaviour
         float x = NormalizedAbsSlope(s);          // Normalize edilmiş slope
         float bias = SlopeBiasFactor(s);         // Genetik offset
 
-        // Heuristic hesaplama (mesafe * eğilim + bias)
+        // Heuristic hesaplama (mesafe * eğilim + bias + gerçek maliyet etkisi)
         float h = dist * 10f * (1f + ( (s > 0f) ? (0.8f * x) : (0.2f * x) )) * (1f + bias);
-        h = Mathf.Clamp(h, 1f, 100000f); // Heuristic'in mantıklı bir aralıkta olmasını sağla
+
+        // Yüksek hıristik değerlerinin penalize edilmemesi gerektiğini göz önünde bulundur
+        h = Mathf.Clamp(h, 1f, 100000f);  // Heuristic değerini mantıklı bir aralıkta tut
 
         return (uint)Mathf.RoundToInt(h);
     }
+
 
     private void SetRandomWanderTarget()
     {
@@ -507,21 +510,23 @@ public class OrganismBehaviour : MonoBehaviour
     /// </summary>
     private uint PerceivedStepCost(int toX, int toY)
     {
-        float s = terrain.GetSlope(toX, toY);              // true slope for that cell
-        float t = NormalizedAbsSlope(s);                  // 0..1
-        float bias = SlopeBiasFactor(s);                  // e.g. -0.10..+0.10
+        float s = terrain.GetSlope(toX, toY);              // gerçek eğim
+        float t = NormalizedAbsSlope(s);                  // 0..1 arası normalize edilmiş eğim
+        float bias = SlopeBiasFactor(s);                  // genetik bias (eğim yönüne göre)
 
-        // Base cost: 10 per step (so we have resolution as uint)
-        // Extra penalty: uphill costs more than downhill (tuned by sign)
-        float uphillExtra = (s > 0f) ? (1.0f + 2.0f * t) : (1.0f + 0.5f * t);
+        // Adım başına harcanan enerji hesaplaması (gerçek maliyet)
+        // Adım başına **gerçek maliyet**: her cell (düğüm) için tahmin edilen enerji kaybı
+        // Base cost: 10 per step
+        float uphillExtra = (s > 0f) ? (1.0f + 2.0f * t) : (1.0f + 0.5f * t); // yokuş tırmanma maliyeti
 
-        // Apply organism's evolved bias: if it "knows hills are costly", bias>0 increases costs on hills
-        // If it underestimates, bias<0 decreases perceived cost and it may choose bad routes.
-        float perceived = 10f * uphillExtra * (1f + bias);
+        // Gerçek maliyetin hesaba katılması (gerçek enerji kaybı)
+        float realEnergyCost = 10f * uphillExtra * (1f + bias); // Yokuş yukarı daha pahalı
 
-        // clamp and convert to uint
-        perceived = Mathf.Clamp(perceived, 1f, 100000f);
-        return (uint)Mathf.RoundToInt(perceived);
+        // Gerçek maliyetin `PerceivedStepCost`'a yansıması
+        realEnergyCost = Mathf.Clamp(realEnergyCost, 1f, 100000f);
+
+        return (uint)Mathf.RoundToInt(realEnergyCost);  // Gerçek maliyet değerini döndür
     }
+
 
 }

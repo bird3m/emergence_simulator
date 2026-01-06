@@ -319,21 +319,22 @@ public class GeneticAlgorithm : MonoBehaviour
 
 
 
-    private void Mutate(float[] chrom, float mutationRate = 0.08f, float mutationStep = 0.05f)
+    private void Mutate(float[] chrom, float mutationRate = 0.08f, float mutationStep = 0.15f)
     {
         for (int i = 0; i < chrom.Length; i++)
         {
             if (Rand01() < mutationRate)
             {
-                // Apply a small random mutation step
+                // Apply a random mutation step
                 float delta = UnityEngine.Random.Range(-mutationStep, mutationStep);
                 chrom[i] += delta;
 
-                // Clamp the value within the valid range for each gene
-                chrom[i] = Mathf.Clamp(chrom[i], -1f, 1f); // Ensure heuristics stay within [-1, 1]
+                // Ensure the heuristic stays within bounds [-1, 1]
+                chrom[i] = Mathf.Clamp(chrom[i], -1f, 1f);  // Ensure heuristic stays within bounds
             }
         }
     }
+
 
 
     // ----------------------------
