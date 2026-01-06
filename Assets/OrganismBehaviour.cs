@@ -346,10 +346,10 @@ public class OrganismBehaviour : MonoBehaviour
 
         float mult = 1f;
 
-        // SUPER OP: Flying organisms have COMPLETE terrain immunity
+        // ULTRA OP: Flying organisms have nearly FREE movement
         if (traits != null && traits.can_fly)
         {
-            mult = 0.1f; // Flying costs almost nothing (VERY OP)
+            mult = 0.02f; // Flying costs almost NOTHING (ULTRA OP)
         }
         else
         {
@@ -751,8 +751,8 @@ public class OrganismBehaviour : MonoBehaviour
         
         if (traits != null && traits.can_cautiousPathing)
         {
-            // BASE BONUS: Cautious organisms always use 40% less energy for pathfinding
-            cautiousCostMultiplier = 0.6f;
+            // BASE BONUS: Cautious organisms use 70% less energy for pathfinding (ULTRA OP)
+            cautiousCostMultiplier = 0.3f;
             
             // CARNIVORE AVOIDANCE: Treat carnivores as obstacles (HIGH cost near them)
             Vector2 cellPos = GetNodePosition(toNode);

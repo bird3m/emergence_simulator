@@ -157,9 +157,12 @@ public class Traits : MonoBehaviour
     // 2. Metabolizmayı "Açlık Hızı" Yap, Kasları "Hız" Yap
     public float GetBaselineEnergyDrain()
     {
-        // SUPER OP CARNIVORE: Carnivores have NO baseline drain (only movement costs)
+        // ULTRA OP CARNIVORE: Carnivores have ZERO baseline drain
         if (is_carnivore)
-            return 0.05f; // Nearly zero baseline drain
+            return 0.05f; // ZERO baseline drain - carnivores extremely efficient
+        
+        // ULTRA OP FLYING: Flying organisms have 80% reduced baseline drain
+        float flyingReduction = (can_fly) ? 0.2f : 1.0f;
         
         // PARETO BASKISI: Metabolizma hızı yüksek olanın "rölanti" harcaması da yüksek olur.
         // Ancak kütle arttıkça bazal tüketim verimliliği artar (Kleiber kanunu simülasyonu)
@@ -175,7 +178,7 @@ public class Traits : MonoBehaviour
             lowMassPenalty = (0.3f - mass) * 0.8f; // 0.1 mass -> +0.16 drain
         }
 
-        return minDrain + metabolicTax + sizeTax + lowMassPenalty;
+        return (minDrain + metabolicTax + sizeTax + lowMassPenalty) * flyingReduction;
     }
 
     public float GetMoveEnergyCostPerUnit(float effectiveMass, float speed)
@@ -302,6 +305,14 @@ public class Traits : MonoBehaviour
         // Metabolic efficiency: 0.0 metabolizma -> 0.5x enerji, 1.0 metabolizma -> 1.5x enerji
         float metabolicEfficiency = Mathf.Lerp(0.5f, 1.5f, metabolic_rate);
         
+        // ULTRA OP CARNIVORE: Carnivores extract 8x base energy from meat
+        if (is_carnivore)
+            metabolicEfficiency *= 8.0f; // 8x energy gain for carnivores (EXTREMELY OP)
+        
+        // ULTRA OP SCAVENGER: Scavengers extract 6x energy from carcasses
+        if (is_scavenging)
+            metabolicEfficiency *= 6.0f; // 6x energy gain for scavengers (EXTREMELY OP)
+        
         float gainedEnergy = energy * metabolicEfficiency;
         currentEnergy += gainedEnergy;
 
@@ -398,9 +409,9 @@ public class Traits : MonoBehaviour
         if (resource == null)
             resource = gameObject.AddComponent<resource>();
 
-        // SUPER INCREASED: Carcass nutrition EXTREMELY high (3x + 60)
-        // Scavenging emergence becomes VERY OP
-        resource.nutrition = currentEnergy * 3.0f + 60f; // ÇOOK arttırıldı: emergencelar OP olsun
+        // ULTRA INCREASED: Carcass nutrition INSANELY high (5x + 100)
+        // Scavenging emergence becomes ULTRA OP
+        resource.nutrition = currentEnergy * 5.0f + 100f; // ULTRA arttırıldı: emergencelar ÇOK OP olsun
 
         if (SourceManager.I != null)
             SourceManager.I.Register(GetComponent<resource>());
