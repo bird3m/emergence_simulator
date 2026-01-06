@@ -39,6 +39,13 @@ public class OrganismBehaviour : MonoBehaviour
     private Vector2 lastPlannedTargetPos;
     public Traits traits;
     private Vector2 lastPos;
+    [Header("Sprite (fly)")]
+    public Sprite flyingSprite;
+    [Header("Sprite (carnivore)")]
+    public Sprite carnivoreSprite;
+    private Sprite originalSprite;
+    private bool prevCanFly = false;
+    private bool prevIsCarnivore = false;
 
 
     [Header("Debug")]
@@ -86,6 +93,29 @@ public class OrganismBehaviour : MonoBehaviour
             traits = GetComponent<Traits>();
 
         speed = traits.GetSpeed(traits.PowerToWeight);
+
+            // cache original sprite and initialize sprite state (carnivore has priority)
+            var sr = GetComponent<SpriteRenderer>();
+            if (sr != null)
+            {
+                originalSprite = sr.sprite;
+                prevCanFly = (traits != null && traits.can_fly);
+                prevIsCarnivore = (traits != null && traits.is_carnivore);
+
+                // priority: carnivore sprite -> flying sprite -> original
+                if (prevIsCarnivore && carnivoreSprite != null)
+                    sr.sprite = carnivoreSprite;
+                else if (prevCanFly && flyingSprite != null)
+                    sr.sprite = flyingSprite;
+                else if (originalSprite != null)
+                    sr.sprite = originalSprite;
+
+                if (prevCanFly && debugCosts)
+                    Debug.Log(gameObject.name + ": trait can_fly = true (speed=" + speed.ToString("F2") + ")");
+
+                if (prevIsCarnivore && debugCosts)
+                    Debug.Log(gameObject.name + ": trait is_carnivore = true");
+            }
 
         float j = UnityEngine.Random.Range(0f, thinkJitter);
         nextRepathTime = Time.time + j;
@@ -146,7 +176,19 @@ public class OrganismBehaviour : MonoBehaviour
             {
                 nextSearchTime = nowTime + targetSearchInterval + UnityEngine.Random.Range(0f, thinkJitter);
 
-                currentTarget = FindClosestSourceInRange();
+                // If carnivore, try to find prey first
+                if (traits != null && traits.is_carnivore)
+                {
+                    currentTarget = FindClosestPreyInRange();
+
+                    if (currentTarget != null && debugCosts)
+                        Debug.Log(gameObject.name + ": acquired prey target " + currentTarget.name);
+                }
+
+                // fallback to sources if no prey or not carnivore
+                // If carnivore: do NOT fallback to sources (only prey)
+                if (currentTarget == null && (traits == null || !traits.is_carnivore))
+                    currentTarget = FindClosestSourceInRange();
 
                 if (currentTarget != null)
                 {
@@ -200,6 +242,22 @@ public class OrganismBehaviour : MonoBehaviour
         // If reached end and have target: consume + clear
         if (pathIndex == pathPoints.Count && currentTarget != null)
         {
+            // If target is an organism and we're carnivore, convert it to resource first
+            var targetTraits = currentTarget.GetComponent<Traits>();
+            if (targetTraits != null && traits != null && traits.is_carnivore)
+            {
+                // Kill prey and convert to resource
+                try
+                {
+                    targetTraits.DieIntoResource();
+                    if (debugCosts) Debug.Log(gameObject.name + ": killed prey " + currentTarget.name);
+                }
+                catch (Exception)
+                {
+                    // ignore
+                }
+            }
+
             var res = currentTarget.GetComponent<resource>();
             float nut = (res != null) ? res.nutrition : 0f;
 
@@ -219,19 +277,63 @@ public class OrganismBehaviour : MonoBehaviour
         // -------------------------
         float movedDistance = Vector2.Distance((Vector2)transform.position, beforeMove);
 
-        float slope = CurrentCellSlope();
-        float slope01 = Mathf.Clamp01(Mathf.Abs(slope) / Mathf.Max(0.0001f, terrain.maxAbsSlope));
-
         float mult = 1f;
-        if (slope > 0f) mult = 1f + slope01 * uphillExtra;
-        else if (slope < 0f) mult = 1f - slope01 * downhillDiscount;
 
-        mult = Mathf.Max(minEnergyMultiplier, mult);
+        // Flying organisms ignore terrain slope for energy cost
+        if (traits == null || !traits.can_fly)
+        {
+            float slope = CurrentCellSlope();
+            float slope01 = Mathf.Clamp01(Mathf.Abs(slope) / Mathf.Max(0.0001f, terrain.maxAbsSlope));
+
+            if (slope > 0f) mult = 1f + slope01 * uphillExtra;
+            else if (slope < 0f) mult = 1f - slope01 * downhillDiscount;
+
+            mult = Mathf.Max(minEnergyMultiplier, mult);
+        }
+            else
+            {
+                if (debugCosts && UnityEngine.Random.value < debugLogChance)
+                    Debug.Log(gameObject.name + ": flying - ignoring slope for energy cost (mult=1)");
+            }
 
         float effort = movedDistance * mult;
 
         if (traits != null)
             traits.UpdateVitals(effort, Time.deltaTime);
+
+        // Check for can_fly / is_carnivore state changes and swap sprite accordingly
+        if (traits != null)
+        {
+            bool nowCanFly = traits.can_fly;
+            bool nowIsCarnivore = traits.is_carnivore;
+
+            if (nowCanFly != prevCanFly || nowIsCarnivore != prevIsCarnivore)
+            {
+                var sr2 = GetComponent<SpriteRenderer>();
+                if (sr2 != null)
+                {
+                    // priority: carnivore -> flying -> original
+                    if (nowIsCarnivore && carnivoreSprite != null)
+                    {
+                        sr2.sprite = carnivoreSprite;
+                        if (debugCosts) Debug.Log(gameObject.name + ": switched to carnivore sprite");
+                    }
+                    else if (nowCanFly && flyingSprite != null)
+                    {
+                        sr2.sprite = flyingSprite;
+                        if (debugCosts) Debug.Log(gameObject.name + ": switched to flying sprite");
+                    }
+                    else
+                    {
+                        sr2.sprite = originalSprite;
+                        if (debugCosts) Debug.Log(gameObject.name + ": reverted to original sprite");
+                    }
+                }
+
+                prevCanFly = nowCanFly;
+                prevIsCarnivore = nowIsCarnivore;
+            }
+        }
     }
 
 
@@ -433,6 +535,34 @@ public class OrganismBehaviour : MonoBehaviour
         return closest;
     }
 
+    private GameObject FindClosestPreyInRange()
+    {
+        OrganismBehaviour[] organisms = GameObject.FindObjectsOfType<OrganismBehaviour>();
+
+        OrganismBehaviour closestOb = null;
+        float minDist = border;
+
+        for (int i = 0; i < organisms.Length; i++)
+        {
+            OrganismBehaviour ob = organisms[i];
+
+            if (ob == this) continue;
+            if (ob.traits == null) continue;
+            if (ob.traits.IsDead()) continue;
+            if (ob.traits.hasBecomeCarcass) continue;
+
+            float d = Vector2.Distance(transform.position, ob.transform.position);
+            if (d < minDist)
+            {
+                minDist = d;
+                closestOb = ob;
+            }
+        }
+
+        if (closestOb != null) return closestOb.gameObject;
+        return null;
+    }
+
     private uint HeuristicForNode(PathfindingAstar.GraphNode n, Vector2 destination)
     {
         // Node'un x, y koordinatlarını çözümle
@@ -441,6 +571,19 @@ public class OrganismBehaviour : MonoBehaviour
         // Gerçek mesafeyi (dünya) hesapla
         Vector2 np = GetNodePosition(n);
         float dist = Vector2.Distance(np, destination);
+
+
+        // If organism can fly, ignore slope in heuristic (use straight distance)
+        if (traits != null && traits.can_fly)
+        {
+            float hFly = dist * 10f * (1f + SlopeBiasFactor(0f));
+            hFly = Mathf.Clamp(hFly, 1f, 100000f);
+
+            if (debugCosts && UnityEngine.Random.value < debugLogChance)
+                Debug.Log(gameObject.name + ": Heuristic - flying branch at node " + n.name + ", dist=" + dist.ToString("F2") + ", h=" + hFly.ToString("F2"));
+
+            return (uint)Mathf.RoundToInt(hFly);
+        }
 
         // Slope ve gene bias hesaplamalarını yap
         float s = terrain.GetSlope(nx, ny);
@@ -510,6 +653,15 @@ public class OrganismBehaviour : MonoBehaviour
     /// </summary>
     private uint PerceivedStepCost(int toX, int toY)
     {
+        // If organism can fly, ignore slope and use straight distance base cost
+        if (traits != null && traits.can_fly)
+        {
+            if (debugCosts && UnityEngine.Random.value < debugLogChance)
+                Debug.Log(gameObject.name + ": PerceivedStepCost - flying at cell " + toX + "," + toY + " -> cost=10");
+
+            return 10u; // base cost per step without slope penalty
+        }
+
         float s = terrain.GetSlope(toX, toY);              // gerçek eğim
         float t = NormalizedAbsSlope(s);                  // 0..1 arası normalize edilmiş eğim
         float bias = SlopeBiasFactor(s);                  // genetik bias (eğim yönüne göre)

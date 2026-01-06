@@ -33,6 +33,8 @@ public class Traits : MonoBehaviour
     public bool can_camouflage;
     #endregion
 
+    private bool loggedCarnivoreChecked = false;
+
    
     public float[] chromosm;
 
@@ -54,6 +56,7 @@ public class Traits : MonoBehaviour
     public bool hasBecomeCarcass = false;
 
      public bool flag = false;
+    private bool loggedCanFly = false;
 
     private void Awake()
     {
@@ -74,6 +77,10 @@ public class Traits : MonoBehaviour
         {
             LoadFromChromosome();
         }
+
+        // Reset one-time debug flags so emergence logs will appear after GA assigns chromosome
+        loggedCanFly = false;
+        loggedCarnivoreChecked = false;
 
         RecomputeAll();
     }
@@ -165,6 +172,39 @@ public class Traits : MonoBehaviour
 
         is_carnivore = (agression >= 0.60f) && (PowerToWeight >= 0.55f) && (metabolic_rate >= 0.45f) && (risk_aversion <= 0.70f);
         is_scavenging = (risk_aversion >= 0.55f) && (danger_weight >= 0.55f) && (agression <= 0.65f);
+
+        // Debug: log the numeric values used for carnivore decision once so we can see why none emerge
+        try
+        {
+            if (!loggedCarnivoreChecked)
+            {
+                Debug.Log(gameObject.name + ": EvaluateEmergences values -> agression=" + agression.ToString("F2") + ", PowerToWeight=" + PowerToWeight.ToString("F2") + ", metabolic_rate=" + metabolic_rate.ToString("F2") + ", risk_aversion=" + risk_aversion.ToString("F2") + " => is_carnivore=" + is_carnivore);
+                loggedCarnivoreChecked = true;
+            }
+        }
+        catch (Exception)
+        {
+            // ignore
+        }
+
+        // Debug: log when flying emergence appears or disappears (only once per change)
+        try
+        {
+            if (can_fly && !loggedCanFly)
+            {
+                Debug.Log(gameObject.name + ": can_fly emerged (EffectiveMass=" + EffectiveMass.ToString("F2") + ", PowerToWeight=" + PowerToWeight.ToString("F2") + ")");
+                loggedCanFly = true;
+            }
+            else if (!can_fly && loggedCanFly)
+            {
+                Debug.Log(gameObject.name + ": can_fly lost");
+                loggedCanFly = false;
+            }
+        }
+        catch (Exception)
+        {
+            // Ignore logging errors in editor/runtime
+        }
     }
 
     // ---------------------------
@@ -257,7 +297,7 @@ public class Traits : MonoBehaviour
         return Mathf.Clamp01(currentEnergy / maxEnergy);
     }
 
-    private void DieIntoResource()
+    public void DieIntoResource()
     {
         hasBecomeCarcass = true;
         Debug.Log("dead as hell"); 
