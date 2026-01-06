@@ -6,7 +6,7 @@ public class Traits : MonoBehaviour
     #region genes (0..1 except heuristic)
     // Energy state (health now based on energy)
     public float maxEnergy;
-    public float currentEnergy;
+    public float currentEnergy =50f;
 
     // physical traits
     [Range(0f, 1f)] public float mass;
@@ -33,6 +33,7 @@ public class Traits : MonoBehaviour
     public bool can_camouflage;
     #endregion
 
+   
     public float[] chromosm;
 
     // derived from genes
@@ -52,6 +53,8 @@ public class Traits : MonoBehaviour
     public int carcassExpireAfterGenerations = 2;
     public bool hasBecomeCarcass = false;
 
+     public bool flag = false;
+
     private void Awake()
     {
         // If chromosome exists and has values, load from it.
@@ -61,6 +64,8 @@ public class Traits : MonoBehaviour
         }
 
         RecomputeAll();
+        InitializeEnergy();  // Initialize energy only
+
     }
 
     public void ApplyChromosomeAndRecompute()
@@ -97,7 +102,6 @@ public class Traits : MonoBehaviour
         MoveEnergyCostPerUnit = GetMoveEnergyCostPerUnit(EffectiveMass, Speed);
         Boldness = GetBoldness();
 
-        InitializeEnergy();  // Initialize energy only
         EvaluateEmergences();
     }
 
@@ -129,8 +133,8 @@ public class Traits : MonoBehaviour
 
     public float GetBaselineEnergyDrain()
     {
-        const float minDrain = 0.5f;
-        const float maxExtra = 1f;
+        const float minDrain = 0.6f;
+        const float maxExtra = 1.05f;
         return minDrain + maxExtra * metabolic_rate;
     }
 
@@ -169,11 +173,14 @@ public class Traits : MonoBehaviour
 
     public void InitializeEnergy()
     {
-        const float BASE_ENERGY = 30f;
+        const float BASE_ENERGY = 45f;
         const float METAB_ENERGY_BONUS = 70f;
 
         maxEnergy = BASE_ENERGY + METAB_ENERGY_BONUS * metabolic_rate;
-        currentEnergy = maxEnergy * 0.5f; // start half-full
+        currentEnergy = maxEnergy * 0.45f; // start a bit under half to encourage mild attrition
+
+         flag = true;
+        
     }
 
     public void Eat(float energy)
@@ -182,34 +189,57 @@ public class Traits : MonoBehaviour
         currentEnergy += energy;
 
         // Clamp energy to the max value
-        currentEnergy = Mathf.Clamp(currentEnergy, 0f, maxEnergy);
+        currentEnergy = Mathf.Clamp(currentEnergy, 0f, maxEnergy); 
+
     }
 
     public void UpdateVitals(float movementDistance, float deltaTime)
     {
-        const float ENERGY_REGEN_PER_SEC = 2f;     // optional, can set 0 if you want none
-        const float REGEN_ENERGY_THRESHOLD = 0.7f; // must have >=70% energy to regen
+        const float ENERGY_REGEN_PER_SEC = 1.0f;
+        const float REGEN_ENERGY_THRESHOLD = 0.85f; // must have >=85% energy to regen
 
         // 1) Compute total energy drain
-        float energyDrainPerSec = BaselineEnergyDrain + (MoveEnergyCostPerUnit * movementDistance);
-        float energyLoss = energyDrainPerSec * 10f * Time.unscaledDeltaTime;  // deltaTime yerine Time.unscaledDeltaTime
+        float dt = Mathf.Max(1e-6f, deltaTime);
 
-        // 2) Pay from energy
+        // movementDistance is a per-frame distance; convert to units/sec
+        float movementSpeed = movementDistance / dt;
+
+        float energyDrainPerSec = BaselineEnergyDrain + (MoveEnergyCostPerUnit * movementSpeed);
+
+        // small aging/maintenance drain so there's always a gentle pressure to die over long runs
+        float agingDrainPerSec = 0.02f + 0.025f * metabolic_rate;
+
+        // use deltaTime passed from caller
+        float energyLoss = (energyDrainPerSec + agingDrainPerSec) * dt;
+      
+
+        // 2) Pay from energys
         currentEnergy -= energyLoss;
 
         // 3) If energy below 0 -> convert deficit into health damage
         if (currentEnergy < 0f)
         {
             currentEnergy = 0f;
+            Die();
         }
 
-        // 4) Optional: slow health regen if energy is high
+        //slow health regen if energy is high
         if (currentEnergy / Mathf.Max(maxEnergy, 1e-4f) >= REGEN_ENERGY_THRESHOLD)
         {
-            currentEnergy += ENERGY_REGEN_PER_SEC * Time.unscaledDeltaTime;  // Use unscaledDeltaTime
+            currentEnergy += ENERGY_REGEN_PER_SEC * dt;
         }
 
         currentEnergy = Mathf.Clamp(currentEnergy, 0f, maxEnergy);
+        
+        Die();
+       
+
+    }
+
+    public void Die()
+    {
+         if (flag && IsDead() && !hasBecomeCarcass)
+            DieIntoResource();
     }
 
     public bool IsDead()
@@ -230,6 +260,7 @@ public class Traits : MonoBehaviour
     private void DieIntoResource()
     {
         hasBecomeCarcass = true;
+        Debug.Log("dead as hell"); 
 
         // Stop movement (disable OrganismBehaviour)
         OrganismBehaviour ob = GetComponent<OrganismBehaviour>();

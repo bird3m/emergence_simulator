@@ -112,11 +112,14 @@ public class GeneticAlgorithm : MonoBehaviour
             // 1) Read fitness from Traits
             EvaluateFitnessFromWorld();
 
-            // LOG BEST of CURRENT generation (before NextGeneration resets fitness)
+           /* // LOG BEST of CURRENT generation (before NextGeneration resets fitness)
             Individual bestOld = GetBest(population);
-            Debug.Log($"Generation {generation} | best fitness: {bestOld.fitness:F3}");
+            Debug.Log($"Generation {generation} | best fitness: {bestOld.fitness:F3}");*/
 
-            // 2) Build next generation
+
+            float avgFitness = GetAverageFitness(population);
+            Debug.Log($"Generation {generation} | average fitness: {avgFitness:F3}");
+            
             population = NextGeneration(population);
             generation++;
 
@@ -395,4 +398,21 @@ public class GeneticAlgorithm : MonoBehaviour
         public float[] chrom;
         public float fitness;
     }
+
+    private float GetAverageFitness(List<Individual> population)
+    {
+        float totalFitness = 0f;
+        int count = 0;
+
+        // Population içindeki her organizmanın fitness'ını topla
+        for (int i = 0; i < population.Count; i++)
+        {
+            totalFitness += population[i].fitness;
+            count++;
+        }
+
+        // Ortalama fitness değeri
+        return count > 0 ? totalFitness / count : 0f;
+    }
+
 }
