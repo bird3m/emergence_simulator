@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class resource : MonoBehaviour
 {
-    public float nutrition = 10f;
+    public float nutrition = 40f;
 
     private void OnEnable()
     {

@@ -317,9 +317,13 @@ MonoBehaviour:
   lowerSlopeHeuristic: 0
   danger_weight: 0
   can_fly: 0
-  can_herd: 0
   is_scavenging: 0
   is_carnivore: 0
+  can_cautiousPathing: 0
+  scarcityThreshold: 0.5
+  maxAggressionBoost: 0.6
+  carcassThresholdRatio: 0.02
+  carcassBoost: 0.4
   chromosm:
   - 0
   - 0
@@ -367,12 +371,15 @@ MonoBehaviour:
   repathMoveThreshold: 1
   traits: {fileID: 7737531533977272853}
   flyingSprite: {fileID: 21300000, guid: 0b756e4af06c953479a3caec093cb042, type: 3}
-  carnivoreSprite: {fileID: 21300000, guid: afc6d551a5fb1ca478357502ec94a9e7, type: 3}
+  carnivoreSprite: {fileID: 21300000, guid: 7f8b4049fa55db149b20ec6b1e8b0769, type: 3}
   debugCosts: 1
   debugLogChance: 0.02
   repathInterval: 0.35
   targetSearchInterval: 0.35
   thinkJitter: 0.15
+  enableCautiousPathing: 0
+  seedInitialCarnivores: 0
+  initialCarnivoreFraction: 0.01
 --- !u!114 &3090274887604956481
 MonoBehaviour:
   m_ObjectHideFlags: 0
