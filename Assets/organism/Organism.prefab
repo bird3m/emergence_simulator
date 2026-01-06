@@ -368,7 +368,6 @@ MonoBehaviour:
   spawner: {fileID: 0}
   repathIfTargetMoved: 1
   repathMoveThreshold: 1
-  lastPath: []
   traits: {fileID: 7737531533977272853}
   flyingSprite: {fileID: 21300000, guid: 0b756e4af06c953479a3caec093cb042, type: 3}
   carnivoreSprite: {fileID: 21300000, guid: afc6d551a5fb1ca478357502ec94a9e7, type: 3}
@@ -377,6 +376,17 @@ MonoBehaviour:
   repathInterval: 0.35
   targetSearchInterval: 0.35
   thinkJitter: 0.15
+  herdDetectionRadius: 8
+  herdFleeDistance: 10
+  herdSpeedMultiplier: 1.5
+  herdDuration: 6
+  seedInitialCarnivores: 1
+  initialCarnivoreFraction: 0.1
+  herdGroupMinSize: 5
+  herdGroupRadius: 5
+  herdClusterRadius: 0.8
+  herdClusterInterval: 2
+  logHerding: 1
 --- !u!114 &3090274887604956481
 MonoBehaviour:
   m_ObjectHideFlags: 0

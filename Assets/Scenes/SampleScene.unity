@@ -440,7 +440,7 @@ MonoBehaviour:
   respawnDelay: 0.1
   maxTries: 200
   spawnOnStart: 1
-  initialCount: 500
+  initialCount: 100
   sourceLayerMask:
     serializedVersion: 2
     m_Bits: 0

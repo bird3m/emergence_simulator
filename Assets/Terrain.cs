@@ -36,7 +36,7 @@ public class Terrain : MonoBehaviour
     {
         if (width <= 0 || height <= 0)
         {
-            Debug.LogError("Width/Height must be > 0.");
+            // Debug log removed
             return;
         }
 
@@ -70,13 +70,13 @@ public class Terrain : MonoBehaviour
     {
         if (slope == null)
         {
-            Debug.LogError("Slope array is not generated yet.");
+            // Debug log removed
             return 0f;
         }
 
         if (x < 0 || y < 0 || x >= width || y >= height)
         {
-            Debug.LogError("Grid coordinate out of bounds: (" + x + "," + y + ")");
+            // Debug log removed
             return 0f;
         }
 

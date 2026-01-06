@@ -51,7 +51,7 @@ public class GeneticAlgorithm : MonoBehaviour
        terrain = FindObjectOfType<global::Terrain>();
         if (terrain == null)
         {
-            Debug.LogError("Terrain not found!");
+            // Debug log removed
             enabled = false;
             return;
         }
@@ -118,7 +118,7 @@ public class GeneticAlgorithm : MonoBehaviour
 
 
             float avgFitness = GetAverageFitness(population);
-            Debug.Log($"Generation {generation} | average fitness: {avgFitness:F3}");
+            // debug log removed
             
             population = NextGeneration(population);
             generation++;
@@ -169,7 +169,7 @@ public class GeneticAlgorithm : MonoBehaviour
             Traits t = go.GetComponent<Traits>();
             if (t == null)
             {
-                Debug.LogError("Prefab missing Traits component!");
+                // debug log removed
                 continue;
             }
 

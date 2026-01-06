@@ -35,14 +35,14 @@ public class OrganismStatsDisplay : MonoBehaviour
             statsText = FindObjectOfType<TextMeshProUGUI>();
             if (statsText == null)
             {
-                Debug.LogWarning("OrganismStatsDisplay: 'statsText' not assigned and no TextMeshProUGUI found in scene. Assign a TextMeshProUGUI component to the field.");
+                // Debug log removed
             }
         }
     }
 
     private void DisplayStats(Traits traits)
     {
-        Debug.Log("Displaying stats for organism.");
+        // Debug log removed
         // Display stats, you can show more or less information based on your needs
         string stats = $"Mass: {traits.mass:F2}\n" +
                        $"Muscle Mass: {traits.muscle_mass:F2}\n" +
