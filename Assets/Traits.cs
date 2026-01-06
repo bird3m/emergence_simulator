@@ -333,7 +333,7 @@ public class Traits : MonoBehaviour
 
     public void Die()
     {
-         if (flag && IsDead() && !hasBecomeCarcass)
+         if (IsDead() && !hasBecomeCarcass)
             DieIntoResource();
     }
 

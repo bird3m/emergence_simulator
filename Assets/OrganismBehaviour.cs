@@ -297,14 +297,20 @@ public class OrganismBehaviour : MonoBehaviour
         // If reached end and have target: consume + clear
         if (pathIndex == pathPoints.Count && currentTarget != null)
         {
-            // If target is an organism and we're carnivore, convert it to resource first
+            bool shouldDestroy = true;
+            
+            // If target is an organism and we're carnivore, convert it to carcass/resource first
             var targetTraits = currentTarget.GetComponent<Traits>();
             if (targetTraits != null && traits != null && traits.is_carnivore)
             {
-                // Kill prey and convert to resource
+                // Kill prey and convert to carcass resource
                 try
                 {
+                    targetTraits.currentEnergy = 0f;
+                    targetTraits.hasBecomeCarcass = true;
                     targetTraits.DieIntoResource();
+                    
+                    shouldDestroy = false; // Don't destroy, let it become a carcass that can be eaten by scavengers
                 }
                 catch (Exception)
                 {
@@ -317,7 +323,10 @@ public class OrganismBehaviour : MonoBehaviour
 
             if (spawner != null) spawner.ScheduleRespawn(nut);
 
-            Destroy(currentTarget);
+            if (shouldDestroy)
+            {
+                Destroy(currentTarget);
+            }
 
             if (traits != null) traits.Eat(nut);
 
