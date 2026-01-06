@@ -73,8 +73,8 @@ public class OrganismBehaviour : MonoBehaviour
     
     [Header("Debug Seed")]
     [Tooltip("If true, randomly mark some organisms as carnivores at Start for testing")]
-    public bool seedInitialCarnivores = true;
-    [Range(0f,1f)] public float initialCarnivoreFraction = 0.10f;
+    public bool seedInitialCarnivores = false;
+    [Range(0f,1f)] public float initialCarnivoreFraction = 0.01f; // 2% carnivores at start
 
     
 
@@ -232,8 +232,8 @@ public class OrganismBehaviour : MonoBehaviour
                 if (currentTarget == null && (traits == null || !traits.is_carnivore))
                     currentTarget = FindClosestSourceInRange();
                 
-                // Cautious pathing: skip targets too close to carnivores
-                if (enableCautiousPathing && currentTarget != null && traits != null && !traits.is_carnivore)
+                // Cautious pathing emergence: skip targets too close to carnivores
+                if (currentTarget != null && traits != null && traits.can_cautiousPathing)
                 {
                     if (IsTargetNearCarnivore(currentTarget.transform.position))
                     {
