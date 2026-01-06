@@ -207,10 +207,10 @@ public class Traits : MonoBehaviour
     public void InitializeEnergy()
     {
         const float BASE_ENERGY = 70f;
-        const float METAB_ENERGY_BONUS = 120f;
+        const float METAB_ENERGY_BONUS = 140f;
 
         maxEnergy = BASE_ENERGY + METAB_ENERGY_BONUS * metabolic_rate;
-        currentEnergy = maxEnergy * 0.75f; // start a bit under half to encourage mild attrition
+        currentEnergy = maxEnergy * 0.45f; // start a bit under half to encourage mild attrition
 
          flag = true;
         
