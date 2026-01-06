@@ -260,17 +260,23 @@ public class GeneticAlgorithm : MonoBehaviour
                 continue;
             }
 
-            // Base fitness from health/energy
+            // Base fitness from survival (energy/health)
             float baseFitness = t.Fitness01();
             
-            // Add bonuses for beneficial emergences
-            float emergenceBonus = 0f;
-            if (t.can_fly) emergenceBonus += flyingFitnessBonus;
-            if (t.is_carnivore) emergenceBonus += carnivoreBonus;
-          
+            // Movement bonus (activity pressure)
+            float normalizedMovement = t.totalMovementDistance / (evaluationSeconds * 3f);
+            float movementBonus = Mathf.Clamp01(normalizedMovement) * 0.15f; // Up to +0.15
             
-            // Final fitness (clamped to [0,1])
-            population[i].fitness = Mathf.Clamp01(baseFitness + emergenceBonus);
+            // Emergence bonuses
+            float emergenceBonus = 0f;
+            
+            if (t.is_carnivore) emergenceBonus += 0.60f;
+            if (t.can_fly) emergenceBonus += 0.50f;
+            if (t.can_cautiousPathing) emergenceBonus += 0.45f;
+            if (t.is_scavenging) emergenceBonus += 0.35f;
+            
+            // Final fitness (clamped to reasonable range)
+            population[i].fitness = Mathf.Clamp01(baseFitness + movementBonus + emergenceBonus);
         }
     }
 
@@ -286,7 +292,7 @@ public class GeneticAlgorithm : MonoBehaviour
         List<Individual> newPop = new List<Individual>();
 
         // 1) Elites
-        for (int i = 0; i < eliteCount; i++)
+        for (int i = 0; i < eliteCount && i < oldPop.Count; i++)
         {
             Individual e = new Individual();
             e.chrom = (float[])oldPop[i].chrom.Clone();
@@ -304,7 +310,7 @@ public class GeneticAlgorithm : MonoBehaviour
 
             if (Rand01() < crossoverRate)
             {
-                child = BLXCrossover(p1.chrom, p2.chrom, alpha);  // Use BLX-α Crossover
+                child = BLXCrossover(p1.chrom, p2.chrom, alpha);
             }
 
             Mutate(child);

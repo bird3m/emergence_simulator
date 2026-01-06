@@ -62,6 +62,9 @@ public class Traits : MonoBehaviour
 
     public int carcassExpireAfterGenerations = 2;
     public bool hasBecomeCarcass = false;
+    
+    // Movement tracking for fitness (higher movement = more active = better)
+    public float totalMovementDistance = 0f;
 
      public bool flag = false;
     private bool loggedCanFly = false;
@@ -137,12 +140,11 @@ public class Traits : MonoBehaviour
 
     public float GetSpeed(float powerToWeight)
     {
-        
+        // Balanced speed calculation
         float metabolicSpeed = metabolic_rate * 1.6f;  
         float speed = (1.75f * powerToWeight) + (1.25f * metabolicSpeed);
 
-       
-        return Mathf.Clamp(speed, 0.1f, 5f); //maximum speed value
+        return Mathf.Clamp(speed, 0.1f, 5f);
     }
 
     public float GetBaselineEnergyDrain()
@@ -200,7 +202,7 @@ public class Traits : MonoBehaviour
             // ignore and use base aggression
         }
 
-        is_carnivore = (effectiveAggression >= 0.60f) && (PowerToWeight >= 0.55f) && (metabolic_rate >= 0.45f) && (risk_aversion <= 0.70f);
+        is_carnivore = (effectiveAggression >= 0.50f) && (PowerToWeight >= 0.50f) && (metabolic_rate >= 0.40f) && (risk_aversion <= 0.75f);
         // Adjust scavenging tendency if many carcasses exist
         float effectiveRiskAversion = risk_aversion;
         float effectiveDangerWeight = danger_weight;
@@ -226,8 +228,9 @@ public class Traits : MonoBehaviour
 
         is_scavenging = (effectiveRiskAversion >= 0.55f) && (effectiveDangerWeight >= 0.55f) && (effectiveAgressionForScav <= 0.65f);
 
-        // Cautious pathing: high risk aversion organisms avoid dangerous areas
-        can_cautiousPathing = (risk_aversion >= 0.60f) && !is_carnivore;
+        // Cautious pathing: LOWER threshold - should be easier to get than carnivore
+        // Savunmacı strateji - yol bulma avantajı var
+        can_cautiousPathing = (risk_aversion >= 0.55f) && (danger_weight >= 0.50f) && !is_carnivore && (agression <= 0.60f);
 
         // Debug: log the numeric values used for carnivore decision once so we can see why none emerge
         try
@@ -269,23 +272,28 @@ public class Traits : MonoBehaviour
 
     public void InitializeEnergy()
     {
-        // PARETO BASKISI: Büyük kütle = Büyük batarya (maxEnergy)
-        // Küçük canlılar (low mass) çok çevik ama pilleri çok küçük.
+       
         const float BASE_ENERGY = 50f;
-        const float MASS_STORAGE_BONUS = 150f; // Kütle artık bir avantaj
+        const float MASS_STORAGE_BONUS = 200f; // Yüksek mass = büyük enerji kapasitesi
         
         maxEnergy = BASE_ENERGY + (MASS_STORAGE_BONUS * mass) + (50f * metabolic_rate);
-        currentEnergy = maxEnergy * 0.8f;
+        currentEnergy = maxEnergy * 0.4f;
     }
 
     public void Eat(float energy)
     {
-        // Gain energy
-        currentEnergy += energy;
+        // METABOLIC EFFICIENCY: Yüksek metabolizma = besinlerden daha fazla enerji
+        // Yüksek metabolizma = hızlı VE verimli sindirim, besinlerden çok enerji alır
+        // Düşük metabolizma = yavaş sindirim, besinlerden az enerji alır
+        
+        // Metabolic efficiency: 0.0 metabolizma -> 0.5x enerji, 1.0 metabolizma -> 1.5x enerji
+        float metabolicEfficiency = Mathf.Lerp(0.5f, 1.5f, metabolic_rate);
+        
+        float gainedEnergy = energy * metabolicEfficiency;
+        currentEnergy += gainedEnergy;
 
         // Clamp energy to the max value
         currentEnergy = Mathf.Clamp(currentEnergy, 0f, maxEnergy); 
-
     }
 
     public void UpdateVitals(float movementDistance, float deltaTime)
@@ -377,8 +385,9 @@ public class Traits : MonoBehaviour
         if (resource == null)
             resource = gameObject.AddComponent<resource>();
 
-        // Set nutrition value based on energy
-        resource.nutrition = currentEnergy * 0.5f + 5f;
+        // INCREASED: Carcass nutrition MUCH higher to reward movement and hunting
+        // Carcass'lar artık çok değerli - hareket etmeye ve avlanmaya teşvik
+        resource.nutrition = currentEnergy * 1.5f + 30f; // Arttırıldı: 0.5x -> 1.5x, +5 -> +30
 
         if (SourceManager.I != null)
             SourceManager.I.Register(GetComponent<resource>());

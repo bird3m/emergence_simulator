@@ -309,7 +309,7 @@ public class OrganismBehaviour : MonoBehaviour
                     targetTraits.currentEnergy = 0f;
                     targetTraits.hasBecomeCarcass = true;
                     targetTraits.DieIntoResource();
-                    
+
                     shouldDestroy = false; // Don't destroy, let it become a carcass that can be eaten by scavengers
                 }
                 catch (Exception)
@@ -339,6 +339,10 @@ public class OrganismBehaviour : MonoBehaviour
         // VITALS (every frame)
         // -------------------------
         float movedDistance = Vector2.Distance((Vector2)transform.position, beforeMove);
+        
+        // Track total movement distance for fitness (hareket baskısı)
+        if (traits != null)
+            traits.totalMovementDistance += movedDistance;
 
         float mult = 1f;
 
@@ -577,6 +581,16 @@ public class OrganismBehaviour : MonoBehaviour
             if (ob.traits == null) continue;
             if (ob.traits.IsDead()) continue;
             if (ob.traits.hasBecomeCarcass) continue;
+            
+            // CARNIVORE CHECK: Carnivores cannot eat other carnivores
+            // Carnivore'lar birbirini yiyemez - sadece non-carnivore'ları avlayabilirler
+            if (ob.traits.is_carnivore)
+                continue; // Skip carnivore prey
+            
+            // MASS CHECK: Carnivore can only hunt smaller organisms
+            // Büyük carnivore'lar daha fazla av bulur, küçük carnivore'lar daha az
+            if (traits != null && ob.traits.mass >= traits.mass)
+                continue; // Skip prey that is equal or larger mass
 
             float d = Vector2.Distance(transform.position, ob.transform.position);
             if (d < minDist)
@@ -727,8 +741,44 @@ public class OrganismBehaviour : MonoBehaviour
         // Bu FİZİKSEL gerçek - tüm organizmalar için aynı
         float slopeMultiplier = (s > 0f) ? (1.0f + 2.0f * t) : (1.0f - 0.5f * t);
         
-        // NO BIAS - This is real physical cost
-        float totalPerceived = baseStep * slopeMultiplier;
+        // CAUTIOUS PATHING BONUS: Carnivore'lardan kaçan yollar daha az maliyetli
+        // Cautious pathing özelliğine sahip organizmalar için carnivore yakınlığı maliyeti azaltılır
+        float cautiousCostReduction = 1.0f;
+        if (traits != null && traits.can_cautiousPathing)
+        {
+            // Check if this cell is near any carnivores
+            Vector2 cellPos = GetNodePosition(toNode);
+            float minCarnivoreDistSq = float.MaxValue;
+            
+            if (GeneticAlgorithm.Organisms != null)
+            {
+                foreach (var org in GeneticAlgorithm.Organisms)
+                {
+                    if (org != null && org != this && org.traits != null && org.traits.is_carnivore)
+                    {
+                        float distSq = ((Vector2)org.transform.position - cellPos).sqrMagnitude;
+                        if (distSq < minCarnivoreDistSq)
+                            minCarnivoreDistSq = distSq;
+                    }
+                }
+            }
+            
+            float dangerRadius = border * 2.0f;
+            if (minCarnivoreDistSq < dangerRadius * dangerRadius)
+            {
+                // Near carnivore - normally this would add extra cost in cautious pathing
+                // But for cautious organisms, we REDUCE the cost instead (they're good at avoiding)
+                // The closer to carnivore, the bigger the reduction
+                float distFromDanger = Mathf.Sqrt(minCarnivoreDistSq);
+                float dangerFactor = 1.0f - Mathf.Clamp01(distFromDanger / dangerRadius);
+                
+                // Cautious organisms pay LESS in dangerous areas (they're adapted to it)
+                // Normal organisms would pay more, but cautious get 30-50% discount
+                cautiousCostReduction = 1.0f - (dangerFactor * 0.40f); // Up to 40% cost reduction
+            }
+        }
+        
+        float totalPerceived = baseStep * slopeMultiplier * cautiousCostReduction;
 
         return (uint)Mathf.Clamp(totalPerceived, 1f, 100000f);
     }
