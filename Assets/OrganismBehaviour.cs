@@ -346,8 +346,12 @@ public class OrganismBehaviour : MonoBehaviour
 
         float mult = 1f;
 
-        // Flying organisms ignore terrain slope for energy cost
-        if (traits == null || !traits.can_fly)
+        // SUPER OP: Flying organisms have COMPLETE terrain immunity
+        if (traits != null && traits.can_fly)
+        {
+            mult = 0.1f; // Flying costs almost nothing (VERY OP)
+        }
+        else
         {
             float slope = CurrentCellSlope();
             float slope01 = Mathf.Clamp01(Mathf.Abs(slope) / Mathf.Max(0.0001f, terrain.maxAbsSlope));
@@ -741,12 +745,16 @@ public class OrganismBehaviour : MonoBehaviour
         // Bu FİZİKSEL gerçek - tüm organizmalar için aynı
         float slopeMultiplier = (s > 0f) ? (1.0f + 2.0f * t) : (1.0f - 0.5f * t);
         
-        // CAUTIOUS PATHING BONUS: Carnivore'lardan kaçan yollar daha az maliyetli
-        // Cautious pathing özelliğine sahip organizmalar için carnivore yakınlığı maliyeti azaltılır
-        float cautiousCostReduction = 1.0f;
+        // CAUTIOUS PATHING: Always cheaper pathfinding + carnivores treated as obstacles
+        float cautiousCostMultiplier = 1.0f;
+        float carnivoreAvoidanceCost = 0f;
+        
         if (traits != null && traits.can_cautiousPathing)
         {
-            // Check if this cell is near any carnivores
+            // BASE BONUS: Cautious organisms always use 40% less energy for pathfinding
+            cautiousCostMultiplier = 0.6f;
+            
+            // CARNIVORE AVOIDANCE: Treat carnivores as obstacles (HIGH cost near them)
             Vector2 cellPos = GetNodePosition(toNode);
             float minCarnivoreDistSq = float.MaxValue;
             
@@ -763,22 +771,19 @@ public class OrganismBehaviour : MonoBehaviour
                 }
             }
             
-            float dangerRadius = border * 2.0f;
+            float dangerRadius = border * 2.5f; // Larger avoidance radius
             if (minCarnivoreDistSq < dangerRadius * dangerRadius)
             {
-                // Near carnivore - normally this would add extra cost in cautious pathing
-                // But for cautious organisms, we REDUCE the cost instead (they're good at avoiding)
-                // The closer to carnivore, the bigger the reduction
+                // Near carnivore - add HIGH cost to avoid this cell (treat as obstacle)
                 float distFromDanger = Mathf.Sqrt(minCarnivoreDistSq);
                 float dangerFactor = 1.0f - Mathf.Clamp01(distFromDanger / dangerRadius);
                 
-                // Cautious organisms pay LESS in dangerous areas (they're adapted to it)
-                // Normal organisms would pay more, but cautious get 30-50% discount
-                cautiousCostReduction = 1.0f - (dangerFactor * 0.40f); // Up to 40% cost reduction
+                // Very high cost multiplier near carnivores (forces path to go around)
+                carnivoreAvoidanceCost = baseStep * dangerFactor * 5.0f; // 5x base cost at carnivore location
             }
         }
         
-        float totalPerceived = baseStep * slopeMultiplier * cautiousCostReduction;
+        float totalPerceived = (baseStep * slopeMultiplier * cautiousCostMultiplier) + carnivoreAvoidanceCost;
 
         return (uint)Mathf.Clamp(totalPerceived, 1f, 100000f);
     }
