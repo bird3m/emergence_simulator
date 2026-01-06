@@ -138,18 +138,44 @@ public class Traits : MonoBehaviour
         return Mathf.Clamp01(muscle_mass / (effectiveMass + eps));
     }
 
+    public float GetSpeed(float powerToWeight)
+    {
+        // Balanced speed calculation
+        float metabolicSpeed = metabolic_rate * 1.6f;  
+        float speed = (1.75f * powerToWeight) + (1.25f * metabolicSpeed);
+
+        return Mathf.Clamp(speed, 0.1f, 5f);
+    }
+
+    public void InitializeEnergy()
+    {
+        // Kütle arttıkça enerji kapasitesi katlanarak artsın
+        maxEnergy = 50f + (250f * Mathf.Pow(mass, 2)); 
+        currentEnergy = maxEnergy * 0.8f;
+    }
 
     // 2. Metabolizmayı "Açlık Hızı" Yap, Kasları "Hız" Yap
     public float GetBaselineEnergyDrain()
     {
-        // Metabolizma hızı yüksek olanın pili çok çabuk biter
-        return 0.2f + (1.5f * metabolic_rate) + (0.2f * mass);
-    }
+        // SUPER OP CARNIVORE: Carnivores have NO baseline drain (only movement costs)
+        if (is_carnivore)
+            return 0.05f; // Nearly zero baseline drain
+        
+        // PARETO BASKISI: Metabolizma hızı yüksek olanın "rölanti" harcaması da yüksek olur.
+        // Ancak kütle arttıkça bazal tüketim verimliliği artar (Kleiber kanunu simülasyonu)
+        const float minDrain = 0.3f;
+        float metabolicTax = 1.2f * metabolic_rate;
+        float sizeTax = 0.5f * mass;
+        
+        // LOW MASS PENALTY: Çok düşük mass = kırılgan vücut, daha fazla bakım gerektirir
+        // Mass < 0.3 ise ekstra enerji harcar (homeostasis maliyeti)
+        float lowMassPenalty = 0f;
+        if (mass < 0.3f)
+        {
+            lowMassPenalty = (0.3f - mass) * 0.8f; // 0.1 mass -> +0.16 drain
+        }
 
-    public float GetSpeed(float powerToWeight)
-    {
-        // Hız için kas kütlesi ana çarpan olsun
-        return Mathf.Clamp(5.0f * powerToWeight * metabolic_rate, 0.5f, 7.0f);
+        return minDrain + metabolicTax + sizeTax + lowMassPenalty;
     }
 
     public float GetMoveEnergyCostPerUnit(float effectiveMass, float speed)
@@ -172,7 +198,8 @@ public class Traits : MonoBehaviour
 
     public void EvaluateEmergences()
     {
-        can_fly = (EffectiveMass <= 0.55f) && (PowerToWeight >= 0.70f) && (metabolic_rate >= 0.65f);
+        // VERY LOWERED: Flying emergence thresholds very easy to achieve
+        can_fly = (EffectiveMass <= 0.80f) && (PowerToWeight >= 0.35f) && (metabolic_rate >= 0.30f);
 
         // Increase effective aggression when resources per organism is low
         float effectiveAggression = agression;
@@ -196,7 +223,8 @@ public class Traits : MonoBehaviour
             // ignore and use base aggression
         }
 
-        is_carnivore = (effectiveAggression >= 0.50f) && (PowerToWeight >= 0.50f) && (metabolic_rate >= 0.40f) && (risk_aversion <= 0.75f);
+        // VERY LOWERED: Carnivore emergence thresholds very easy to achieve
+        is_carnivore = (effectiveAggression >= 0.30f) && (PowerToWeight >= 0.30f) && (metabolic_rate >= 0.20f) && (risk_aversion <= 0.85f);
         // Adjust scavenging tendency if many carcasses exist
         float effectiveRiskAversion = risk_aversion;
         float effectiveDangerWeight = danger_weight;
@@ -220,11 +248,12 @@ public class Traits : MonoBehaviour
             // ignore and use base genes
         }
 
-        is_scavenging = (effectiveRiskAversion >= 0.55f) && (effectiveDangerWeight >= 0.55f) && (effectiveAgressionForScav <= 0.65f);
+        // VERY LOWERED: Scavenging emergence thresholds very easy to achieve
+        is_scavenging = (effectiveRiskAversion >= 0.30f) && (effectiveDangerWeight >= 0.30f) && (effectiveAgressionForScav <= 0.80f);
 
-        // Cautious pathing: LOWER threshold - should be easier to get than carnivore
+        // Cautious pathing: VERY EASY threshold
         // Savunmacı strateji - yol bulma avantajı var
-        can_cautiousPathing = (risk_aversion >= 0.55f) && (danger_weight >= 0.50f) && !is_carnivore && (agression <= 0.60f);
+        can_cautiousPathing = (risk_aversion >= 0.30f) && (danger_weight >= 0.25f) && !is_carnivore && (agression <= 0.75f);
 
         // Debug: log the numeric values used for carnivore decision once so we can see why none emerge
         try
@@ -263,16 +292,6 @@ public class Traits : MonoBehaviour
     // ---------------------------
     // Energy + fitness
     // ---------------------------
-
-    public void InitializeEnergy()
-    {
-       
-        const float BASE_ENERGY = 50f;
-        const float MASS_STORAGE_BONUS = 200f; // Yüksek mass = büyük enerji kapasitesi
-        
-        maxEnergy = BASE_ENERGY + (MASS_STORAGE_BONUS * mass) + (50f * metabolic_rate);
-        currentEnergy = maxEnergy * 0.4f;
-    }
 
     public void Eat(float energy)
     {
@@ -379,9 +398,9 @@ public class Traits : MonoBehaviour
         if (resource == null)
             resource = gameObject.AddComponent<resource>();
 
-        // INCREASED: Carcass nutrition MUCH higher to reward movement and hunting
-        // Carcass'lar artık çok değerli - hareket etmeye ve avlanmaya teşvik
-        resource.nutrition = currentEnergy * 1.5f + 30f; // Arttırıldı: 0.5x -> 1.5x, +5 -> +30
+        // SUPER INCREASED: Carcass nutrition EXTREMELY high (3x + 60)
+        // Scavenging emergence becomes VERY OP
+        resource.nutrition = currentEnergy * 3.0f + 60f; // ÇOOK arttırıldı: emergencelar OP olsun
 
         if (SourceManager.I != null)
             SourceManager.I.Register(GetComponent<resource>());

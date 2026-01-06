@@ -271,20 +271,8 @@ public class GeneticAlgorithm : MonoBehaviour
             // Base fitness from survival (energy/health)
             float baseFitness = t.Fitness01();
             
-            // Movement bonus (activity pressure)
-            float normalizedMovement = t.totalMovementDistance / (evaluationSeconds * 3f);
-            float movementBonus = Mathf.Clamp01(normalizedMovement) * 0.15f; // Up to +0.15
-            
-            // Emergence bonuses
-            float emergenceBonus = 0f;
-            
-            if (t.is_carnivore) emergenceBonus += 0.60f;
-            if (t.can_fly) emergenceBonus += 0.50f;
-            if (t.can_cautiousPathing) emergenceBonus += 0.45f;
-            if (t.is_scavenging) emergenceBonus += 0.35f;
-            
-            // Final fitness (clamped to reasonable range)
-            population[i].fitness = Mathf.Clamp01(baseFitness + movementBonus + emergenceBonus);
+            // Final fitness = sadece hayatta kalma ve yedikleri
+            population[i].fitness = baseFitness;
         }
     }
 
