@@ -27,7 +27,7 @@ public class OrganismBehaviour : MonoBehaviour
     private static Dictionary<string, PathfindingAstar.GraphNode> nodeByName;
     private static bool graphBuilt = false;
 
-
+    [HideInInspector] // Unity Inspector'ın bu listeyi okumaya çalışmasını engeller
     public List<PathfindingAstar.GraphNode> lastPath = new List<PathfindingAstar.GraphNode>();
 
 
@@ -159,6 +159,10 @@ public class OrganismBehaviour : MonoBehaviour
 
     private void Update()
     {
+
+
+        if (lastPath != null && lastPath.Count > 0) DebugPathCosts();
+
         if (!enabled) return;
         if (allNodes == null || allNodes.Count == 0) return;
 
@@ -338,22 +342,6 @@ public class OrganismBehaviour : MonoBehaviour
 
 
 
-    private uint DebugPlannedPathCost()
-    {
-        if (lastPath == null || lastPath.Count < 2) return 0;
-
-        uint sum = 0;
-
-        for (int i = 1; i < lastPath.Count; i++)
-        {
-            ParseNodeXY(lastPath[i], out int x, out int y);
-            sum += PerceivedStepCost(x, y);
-        }
-
-        return sum;
-    }
-
-
     private void AddLinkIfValid(PathfindingAstar.GraphNode node, int targetX, int targetY)
     {
         if (targetX < 0 || targetX >= terrain.width || targetY < 0 || targetY >= terrain.height)
@@ -376,38 +364,25 @@ public class OrganismBehaviour : MonoBehaviour
         pathIndex = 0;
 
         PathfindingAstar.GraphNode startNode = NodeFromWorld((Vector2)transform.position);
-        PathfindingAstar.GraphNode goalNode  = NodeFromWorld(destination);
+        PathfindingAstar.GraphNode goalNode = NodeFromWorld(destination);
 
-        if (startNode == null || goalNode == null)
-            return;
+        if (startNode == null || goalNode == null) return;
 
-        // Heuristic dictionary must be GraphNode -> uint for the new A*
-        PathfindingAstar.AStarResult result = PathfindingAstar.SolveAstar(startNode, goalNode, (n) => HeuristicForNode(n, destination));
+        // 4 ARGÜMAN GÖNDERİYORUZ: Artık hata vermeyecek
+        PathfindingAstar.AStarResult result = PathfindingAstar.SolveAstar(
+            startNode, 
+            goalNode, 
+            (n) => HeuristicForNode(n, destination),
+            (from, to) => PerceivedStepCost(to) // G maliyeti için alt metodu çağırır
+        );
 
         if (result.found && result.path != null)
         {
+            LogImmediatePathAnalysis(result);
             lastPath.Clear();
             lastPath.AddRange(result.path);
+            foreach (var node in result.path) pathPoints.Add(GetNodePosition(node));
         }
-
-
-        if (!result.found || result.path == null || result.path.Count == 0)
-            return;
-
-        // Convert node path to world points
-        for (int i = 0; i < result.path.Count; i++)
-        {
-            pathPoints.Add(GetNodePosition(result.path[i]));
-        }
-
-
-    
-        if (debugCosts && result.found)
-        {
-            uint planned = DebugPlannedPathCost();
-            
-        }
-
     }
 
 
@@ -535,6 +510,7 @@ public class OrganismBehaviour : MonoBehaviour
         return closest;
     }
 
+<<<<<<< HEAD
     private GameObject FindClosestPreyInRange()
     {
         OrganismBehaviour[] organisms = GameObject.FindObjectsOfType<OrganismBehaviour>();
@@ -563,15 +539,20 @@ public class OrganismBehaviour : MonoBehaviour
         return null;
     }
 
+=======
+    /// <summary>
+    /// Heuristic for A* - estimates remaining cost.
+    /// This includes the organism's GENETIC PREFERENCE (bias) for uphill/downhill.
+    /// Good genes = better estimates = more efficient paths = more energy saved.
+    /// </summary>
+>>>>>>> bb9d7c5ef2c7d527b247aacb44eb9b6a8c457c78
     private uint HeuristicForNode(PathfindingAstar.GraphNode n, Vector2 destination)
     {
-        // Node'un x, y koordinatlarını çözümle
         ParseNodeXY(n, out int nx, out int ny);
-
-        // Gerçek mesafeyi (dünya) hesapla
         Vector2 np = GetNodePosition(n);
         float dist = Vector2.Distance(np, destination);
 
+<<<<<<< HEAD
 
         // If organism can fly, ignore slope in heuristic (use straight distance)
         if (traits != null && traits.can_fly)
@@ -586,17 +567,29 @@ public class OrganismBehaviour : MonoBehaviour
         }
 
         // Slope ve gene bias hesaplamalarını yap
+=======
+>>>>>>> bb9d7c5ef2c7d527b247aacb44eb9b6a8c457c78
         float s = terrain.GetSlope(nx, ny);
-        float x = NormalizedAbsSlope(s);          // Normalize edilmiş slope
-        float bias = SlopeBiasFactor(s);         // Genetik offset
+        float slopeNorm = NormalizedAbsSlope(s);
+        float bias = SlopeBiasFactor(s);  // Genetic preference [-maxBias, +maxBias]
 
-        // Heuristic hesaplama (mesafe * eğilim + bias + gerçek maliyet etkisi)
-        float h = dist * 10f * (1f + ( (s > 0f) ? (0.8f * x) : (0.2f * x) )) * (1f + bias);
+        // Base heuristic: Manhattan-like distance in cost units
+        float baseH = dist * 10f;
 
-        // Yüksek hıristik değerlerinin penalize edilmemesi gerektiğini göz önünde bulundur
-        h = Mathf.Clamp(h, 1f, 100000f);  // Heuristic değerini mantıklı bir aralıkta tut
+        // Slope influence on estimate
+        // Uphill is more costly, downhill is less costly
+        float slopeInfluence = (s > 0f) ? (1.0f + 1.5f * slopeNorm) : (1.0f - 0.3f * slopeNorm);
 
-        return (uint)Mathf.RoundToInt(h);
+        // Apply genetic bias
+        // Positive bias (gene closer to +1) = organism PREFERS this slope direction
+        //   -> LOWER heuristic (thinks path is cheaper than it is)
+        // Negative bias (gene closer to -1) = organism AVOIDS this slope direction  
+        //   -> HIGHER heuristic (thinks path is more expensive than it is)
+        float biasFactor = 1.0f - bias;  // Reverse sign: positive gene = lower h
+
+        float h = baseH * slopeInfluence * biasFactor;
+
+        return (uint)Mathf.Clamp(h, 1f, 100000f);
     }
 
 
@@ -649,10 +642,13 @@ public class OrganismBehaviour : MonoBehaviour
 
     /// <summary>
     /// Perceived step cost in "A* units".
+    /// This is the REAL physical cost - no genetic bias here.
+    /// The organism will pay this cost regardless of preferences.
     /// Must return >= 1 so cost is never zero.
     /// </summary>
-    private uint PerceivedStepCost(int toX, int toY)
+    private uint PerceivedStepCost(PathfindingAstar.GraphNode toNode)
     {
+<<<<<<< HEAD
         // If organism can fly, ignore slope and use straight distance base cost
         if (traits != null && traits.can_fly)
         {
@@ -665,20 +661,99 @@ public class OrganismBehaviour : MonoBehaviour
         float s = terrain.GetSlope(toX, toY);              // gerçek eğim
         float t = NormalizedAbsSlope(s);                  // 0..1 arası normalize edilmiş eğim
         float bias = SlopeBiasFactor(s);                  // genetik bias (eğim yönüne göre)
+=======
+        ParseNodeXY(toNode, out int tx, out int ty);
+        float s = terrain.GetSlope(tx, ty);
+        float t = NormalizedAbsSlope(s);
+>>>>>>> bb9d7c5ef2c7d527b247aacb44eb9b6a8c457c78
 
-        // Adım başına harcanan enerji hesaplaması (gerçek maliyet)
-        // Adım başına **gerçek maliyet**: her cell (düğüm) için tahmin edilen enerji kaybı
-        // Base cost: 10 per step
-        float uphillExtra = (s > 0f) ? (1.0f + 2.0f * t) : (1.0f + 0.5f * t); // yokuş tırmanma maliyeti
+        // Temel yol maliyeti
+        float baseStep = 10f; 
 
-        // Gerçek maliyetin hesaba katılması (gerçek enerji kaybı)
-        float realEnergyCost = 10f * uphillExtra * (1f + bias); // Yokuş yukarı daha pahalı
+        // Yokuş yukarı (s > 0) ise maliyet katlanır, yokuş aşağı ise azalır
+        // Bu FİZİKSEL gerçek - tüm organizmalar için aynı
+        float slopeMultiplier = (s > 0f) ? (1.0f + 2.0f * t) : (1.0f - 0.5f * t);
+        
+        // NO BIAS - This is real physical cost
+        float totalPerceived = baseStep * slopeMultiplier;
 
-        // Gerçek maliyetin `PerceivedStepCost`'a yansıması
-        realEnergyCost = Mathf.Clamp(realEnergyCost, 1f, 100000f);
-
-        return (uint)Mathf.RoundToInt(realEnergyCost);  // Gerçek maliyet değerini döndür
+        return (uint)Mathf.Clamp(totalPerceived, 1f, 100000f);
     }
 
+    private void DebugPathCosts()
+    {
+        if (!debugCosts) return;
+        if (lastPath == null || lastPath.Count < 2) return;
 
+        // Random sampling - only log occasionally
+        if (UnityEngine.Random.value > debugLogChance) return;
+
+        uint totalRealCost = 0;
+        float totalPhysicalSlope = 0f;
+        int uphillSteps = 0;
+        int downhillSteps = 0;
+
+        for (int i = 0; i < lastPath.Count; i++)
+        {
+            ParseNodeXY(lastPath[i], out int x, out int y);
+            float slope = terrain.GetSlope(x, y);
+            totalPhysicalSlope += slope;
+
+            if (i > 0)
+            {
+                uint realCost = PerceivedStepCost(lastPath[i]);
+                totalRealCost += realCost;
+            }
+
+            if (slope > 0.05f) uphillSteps++;
+            else if (slope < -0.05f) downhillSteps++;
+        }
+
+        float avgSlope = totalPhysicalSlope / lastPath.Count;
+
+        Debug.Log($"<color=cyan>[PATH ANALYSIS]</color> " +
+                  $"Steps:{lastPath.Count} | " +
+                  $"RealCost:{totalRealCost} | " +
+                  $"AvgSlope:{avgSlope:F3} | " +
+                  $"Uphill:{uphillSteps} Down:{downhillSteps} | " +
+                  $"Genes [U:{traits.upperSlopeHeuristic:F2} L:{traits.lowerSlopeHeuristic:F2}] | " +
+                  $"Energy:{traits.currentEnergy:F1}/{traits.maxEnergy:F1}");
+    }
+    private void LogImmediatePathAnalysis(PathfindingAstar.AStarResult result)
+    {
+        // KONTROL 1: Fonksiyonun tetiklendiğini görmek için (Siyah renk)
+        // Debug.Log("[Tetik] LogImmediatePathAnalysis başladı.");
+
+        if (result.path == null) {
+            Debug.LogWarning("[Hata] Result Path null geldi!");
+            return;
+        }
+
+        if (result.path.Count < 2) return;
+
+        // Verileri topluyoruz
+        int count = result.path.Count;
+        float totalSlope = 0f;
+        uint totalCost = 0;
+
+        for (int i = 0; i < count; i++)
+        {
+            var node = result.path[i];
+            totalCost += PerceivedStepCost(node);
+            
+            ParseNodeXY(node, out int x, out int y);
+            totalSlope += terrain.GetSlope(x, y);
+        }
+
+        // LORDUM, BU LOG ÇIKMAZSA UNITY BOZUKTUR:
+        // Renk kodunu kaldırıp en basit haliyle yazdırıyoruz.
+        string finalReport = "PATH_REPORT -> ID:" + GetHashCode() + 
+                            " Nodes:" + count + 
+                            " Cost:" + totalCost + 
+                            " AvgSlope:" + (totalSlope / count).ToString("F3") +
+                            " Genes: " + traits.upperSlopeHeuristic.ToString("F2");
+
+        // LogType.Log kullanarak en yüksek öncelikle bastırıyoruz
+        Debug.unityLogger.Log(LogType.Log, finalReport);
+    }
 }

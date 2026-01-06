@@ -6,7 +6,6 @@ public class PathfindingAstar : MonoBehaviour
 {
     // -------------------- Graph Structures --------------------
 
-    [Serializable]
     public class GraphNode
     {
         public string name;
@@ -18,7 +17,6 @@ public class PathfindingAstar : MonoBehaviour
         }
     }
 
-    [Serializable]
     public struct Link
     {
         public uint cost;
@@ -49,8 +47,9 @@ public class PathfindingAstar : MonoBehaviour
     public static AStarResult SolveAstar(
     GraphNode start,
     GraphNode goal,
-    Func<GraphNode, uint> heuristicFunc)
-    {
+    Func<GraphNode, uint> heuristicFunc,
+    Func<GraphNode, GraphNode, uint> costFunc) // Yeni: İki düğüm arası maliyet fonksiyonu
+{
         AStarResult result = new AStarResult();
         result.found = false;
         result.totalCost = 0;
@@ -95,10 +94,11 @@ public class PathfindingAstar : MonoBehaviour
                 Link l = current.links[i];
                 GraphNode neighbor = l.node;
 
-                if (neighbor == null) continue;
-                if (closed.Contains(neighbor)) continue;
+                if (neighbor == null || closed.Contains(neighbor)) continue;
 
-                uint tentativeG = gScore[current] + l.cost;
+                // HATA BURADAYDI: l.cost yerine dışarıdan gelen costFunc kullanılıyor
+                uint stepCost = costFunc(current, neighbor); 
+                uint tentativeG = gScore[current] + stepCost;
 
                 bool better = !gScore.ContainsKey(neighbor) || tentativeG < gScore[neighbor];
                 if (better)
