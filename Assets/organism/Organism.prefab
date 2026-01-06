@@ -316,12 +316,10 @@ MonoBehaviour:
   upperSlopeHeuristic: 0
   lowerSlopeHeuristic: 0
   danger_weight: 0
-  camouflage: 0
   can_fly: 0
   can_herd: 0
   is_scavenging: 0
   is_carnivore: 0
-  can_camouflage: 0
   chromosm:
   - 0
   - 0
@@ -356,7 +354,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 78121bab8e222dc4e85d3949da224c88, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
-  border: 10
+  border: 25
   reachTolerance: 0.5
   speed: 5
   wanderRadius: 8
