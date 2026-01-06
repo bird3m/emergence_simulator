@@ -135,25 +135,24 @@ public class Traits : MonoBehaviour
         return Mathf.Clamp01(muscle_mass / (effectiveMass + eps));
     }
 
-    public float GetSpeed(float powerToWeight)
+    public void InitializeEnergy()
     {
-        
-        float metabolicSpeed = metabolic_rate * 1.6f;  
-        float speed = (1.75f * powerToWeight) + (1.25f * metabolicSpeed);
-
-       
-        return Mathf.Clamp(speed, 0.1f, 5f); //maximum speed value
+        // Kütle arttıkça enerji kapasitesi katlanarak artsın
+        maxEnergy = 50f + (250f * Mathf.Pow(mass, 2)); 
+        currentEnergy = maxEnergy * 0.8f;
     }
 
+    // 2. Metabolizmayı "Açlık Hızı" Yap, Kasları "Hız" Yap
     public float GetBaselineEnergyDrain()
     {
-        // PARETO BASKISI: Metabolizma hızı yüksek olanın "rölanti" harcaması da yüksek olur.
-        // Ancak kütle arttıkça bazal tüketim verimliliği artar (Kleiber kanunu simülasyonu)
-        const float minDrain = 0.3f;
-        float metabolicTax = 1.2f * metabolic_rate;
-        float sizeTax = 0.5f * mass; 
+        // Metabolizma hızı yüksek olanın pili çok çabuk biter
+        return 0.2f + (1.5f * metabolic_rate) + (0.2f * mass);
+    }
 
-        return minDrain + metabolicTax + sizeTax;
+    public float GetSpeed(float powerToWeight)
+    {
+        // Hız için kas kütlesi ana çarpan olsun
+        return Mathf.Clamp(5.0f * powerToWeight * metabolic_rate, 0.5f, 7.0f);
     }
 
     public float GetMoveEnergyCostPerUnit(float effectiveMass, float speed)
@@ -265,17 +264,6 @@ public class Traits : MonoBehaviour
     // ---------------------------
     // Energy + fitness
     // ---------------------------
-
-    public void InitializeEnergy()
-    {
-        // PARETO BASKISI: Büyük kütle = Büyük batarya (maxEnergy)
-        // Küçük canlılar (low mass) çok çevik ama pilleri çok küçük.
-        const float BASE_ENERGY = 50f;
-        const float MASS_STORAGE_BONUS = 150f; // Kütle artık bir avantaj
-        
-        maxEnergy = BASE_ENERGY + (MASS_STORAGE_BONUS * mass) + (50f * metabolic_rate);
-        currentEnergy = maxEnergy * 0.8f;
-    }
 
     public void Eat(float energy)
     {
