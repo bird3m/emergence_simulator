@@ -13,6 +13,9 @@ public class SourceSpawner : MonoBehaviour
     [Header("Initial Spawn")]
     public bool spawnOnStart = true;
     public int initialCount = 50;
+    
+    [Header("Nutrition Settings")]
+    public float nutrition = 10f;
 
     [Header("Collision")]
     public LayerMask sourceLayerMask; // only sources
@@ -35,11 +38,18 @@ public class SourceSpawner : MonoBehaviour
 
     private void Start()
     {
+        // Read values from singleton if available
+        if (stats_for_simulation.Instance != null)
+        {
+            initialCount = stats_for_simulation.Instance.resourceCount;
+            nutrition = stats_for_simulation.Instance.resourceNutrition;
+        }
+        
         if (!spawnOnStart) return;
 
         for (int i = 0; i < initialCount; i++)
         {
-            SpawnOne(Random.Range(5f, 15f)); // nutrition örnek
+            SpawnOne(nutrition);
         }
     }
 
@@ -132,9 +142,20 @@ public class SourceSpawner : MonoBehaviour
         // Spawn fresh resources
         for (int i = 0; i < initialCount; i++)
         {
-            SpawnOne(Random.Range(5f, 15f));
+            SpawnOne(nutrition);
         }
         
         Debug.Log($"Resources reset: {initialCount} new resources spawned");
+    }
+    
+    // UI Slider metodları
+    public void SetResourceCount(float value)
+    {
+        initialCount = Mathf.RoundToInt(value);
+    }
+    
+    public void SetNutrition(float value)
+    {
+        nutrition = value;
     }
 }

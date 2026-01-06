@@ -34,6 +34,17 @@ public class Terrain : MonoBehaviour
 
     private void Awake()
     {
+        // Read terrain size from singleton if available
+        if (stats_for_simulation.Instance != null)
+        {
+            width = stats_for_simulation.Instance.terrainSize;
+            height = stats_for_simulation.Instance.terrainSize;
+        }
+        else 
+        {
+            Debug.Log("is null");
+        }
+        
         Generate();
     }
 

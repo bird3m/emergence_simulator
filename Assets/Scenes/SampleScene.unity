@@ -478,9 +478,9 @@ MonoBehaviour:
   terrain: {fileID: 0}
   panSpeed: 1
   enableZoom: 1
-  zoomSpeed: 5
-  minZoom: 2
-  maxZoom: 20
+  zoomSpeed: 25
+  minZoom: 15
+  maxZoom: 75
 --- !u!1 &568344364
 GameObject:
   m_ObjectHideFlags: 0
@@ -517,6 +517,7 @@ MonoBehaviour:
   maxTries: 200
   spawnOnStart: 1
   initialCount: 100
+  nutrition: 10
   sourceLayerMask:
     serializedVersion: 2
     m_Bits: 0
@@ -1334,13 +1335,12 @@ MonoBehaviour:
   organismPrefab: {fileID: 1327708465454452514, guid: b6e2f98ed376ee740909d269ec1ac864, type: 3}
   spawnPoints: []
   populationSize: 100
-  eliteCount: 75
+  eliteCount: 100
   crossoverRate: 0.9
   mutationRate: 0.08
   mutationStep: 0.1
   flyingFitnessBonus: 0.15
   carnivoreBonus: 0.1
-  herdBonus: 0.05
   evaluationSeconds: 50
   upperAvgText: {fileID: 730338129}
   lowerAvgText: {fileID: 1119045634}
@@ -1529,7 +1529,7 @@ GameObject:
   - component: {fileID: 1142721502}
   - component: {fileID: 1142721501}
   m_Layer: 5
-  m_Name: Traits (1)
+  m_Name: trait_lines
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1750,7 +1750,7 @@ GameObject:
   - component: {fileID: 1493930511}
   - component: {fileID: 1493930510}
   m_Layer: 5
-  m_Name: Traits (2)
+  m_Name: emergences
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

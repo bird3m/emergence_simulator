@@ -138,20 +138,6 @@ public class Traits : MonoBehaviour
         return Mathf.Clamp01(muscle_mass / (effectiveMass + eps));
     }
 
-    public void InitializeEnergy()
-    {
-<<<<<<< HEAD
-        // Kütle arttıkça enerji kapasitesi katlanarak artsın
-        maxEnergy = 50f + (250f * Mathf.Pow(mass, 2)); 
-        currentEnergy = maxEnergy * 0.8f;
-=======
-        // Balanced speed calculation
-        float metabolicSpeed = metabolic_rate * 1.6f;  
-        float speed = (1.75f * powerToWeight) + (1.25f * metabolicSpeed);
-
-        return Mathf.Clamp(speed, 0.1f, 5f);
->>>>>>> 00bc3cdcdc401335e267bf1dd832ae14303aee99
-    }
 
     // 2. Metabolizmayı "Açlık Hızı" Yap, Kasları "Hız" Yap
     public float GetBaselineEnergyDrain()
@@ -278,8 +264,6 @@ public class Traits : MonoBehaviour
     // Energy + fitness
     // ---------------------------
 
-<<<<<<< HEAD
-=======
     public void InitializeEnergy()
     {
        
@@ -290,7 +274,6 @@ public class Traits : MonoBehaviour
         currentEnergy = maxEnergy * 0.4f;
     }
 
->>>>>>> 00bc3cdcdc401335e267bf1dd832ae14303aee99
     public void Eat(float energy)
     {
         // METABOLIC EFFICIENCY: Yüksek metabolizma = besinlerden daha fazla enerji

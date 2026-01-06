@@ -67,7 +67,15 @@ public class GeneticAlgorithm : MonoBehaviour
 
     private void Start()
     {
-       terrain = FindObjectOfType<global::Terrain>();
+        // Read values from singleton if available
+        if (stats_for_simulation.Instance != null)
+        {
+            populationSize = stats_for_simulation.Instance.populationSize;
+            evaluationSeconds = stats_for_simulation.Instance.evaluationTime;
+            eliteCount = populationSize;
+        }
+        
+        terrain = FindObjectOfType<global::Terrain>();
         if (terrain == null)
         {
             // Debug log removed
