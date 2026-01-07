@@ -36,7 +36,10 @@ public class GeneticAlgorithm : MonoBehaviour
     // Spawned organisms are cached
     public static List<OrganismBehaviour> Organisms = new List<OrganismBehaviour>();
 
-    // Time: O(n)
+    // Carcass count cached for performance (count dead organisms with hasBecomeCarcass)
+    public static int CarcassCount = 0;
+
+    //Unity specific function for adding spawned individuals to spawned list
     public static void RegisterOrganism(OrganismBehaviour ob)
     {
         if (ob == null) return;
@@ -49,6 +52,18 @@ public class GeneticAlgorithm : MonoBehaviour
         if (ob == null) 
             return;
         Organisms.Remove(ob);
+    }
+
+    //Increment carcass count
+    public static void RegisterCarcass()
+    {
+        CarcassCount++;
+    }
+
+    //Decrement carcass count
+    public static void UnregisterCarcass()
+    {
+        if (CarcassCount > 0) CarcassCount--;
     }
 
     //counter for evaluation seconds
@@ -118,6 +133,9 @@ public class GeneticAlgorithm : MonoBehaviour
             // Reset world for next generation
             DestroySpawned();
             
+            // Clear carcass count for new generation
+            CarcassCount = 0;
+            
             // Reset all resources for next generation
             if (spawner != null)
             {
@@ -126,7 +144,6 @@ public class GeneticAlgorithm : MonoBehaviour
             
             SpawnPopulation();
         }
-
 
     }
 
