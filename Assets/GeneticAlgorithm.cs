@@ -27,14 +27,13 @@ public class GeneticAlgorithm : MonoBehaviour
     public float mutationRate = 0.08f;
     public float mutationStep = 0.5f;
     
-
-    [Header("Evaluation")]
+    //After a certain point of time, selection happens and loop starts again. Can be adjusted for each run.
     public float evaluationSeconds = 20f;
 
     private List<Individual> population = new List<Individual>();
     private List<GameObject> spawned = new List<GameObject>();
 
-    // Central registry of active organisms to avoid FindObjectsOfType calls.
+    // Spawned organisms are cached
     public static List<OrganismBehaviour> Organisms = new List<OrganismBehaviour>();
 
     // Time: O(n)
@@ -44,35 +43,31 @@ public class GeneticAlgorithm : MonoBehaviour
         if (!Organisms.Contains(ob)) Organisms.Add(ob);
     }
 
-    // Time: O(n) because Remove is linear, Space: O(1)
+    //Unity specific function for removing spawned individuals to spawned list
     public static void UnregisterOrganism(OrganismBehaviour ob)
     {
-        if (ob == null) return;
+        if (ob == null) 
+            return;
         Organisms.Remove(ob);
     }
 
+    //counter for evaluation seconds
     private float timer = 0f;
+    //t counter for generations
     private int generation = 0;
     private System.Random rng = new System.Random();
 
     private global::Terrain terrain;
-    [Header("UI")]
-    public TMP_Text upperAvgText;
-    public TMP_Text lowerAvgText;
 
-    [Header("Plot")]
-    public LineGraph upperGraph;
-    public LineGraph lowerGraph;
-
-    private List<float> upperHistory = new List<float>();
-    private List<float> lowerHistory = new List<float>();
+    //A reference to source spawner function 
     public SourceSpawner spawner;
     public float alpha = 0.5f; // Blend factor for BLX-α Crossover
 
     // Time: O(n) because initializing population, Space: O(n) because storing population
     private void Start()
     {
-        // Read values from singleton if available
+        // Read values from singleton if available, 
+        // that enables simulation to read adjusted values.
         if (stats_for_simulation.Instance != null)
         {
             populationSize = stats_for_simulation.Instance.populationSize;
@@ -88,73 +83,39 @@ public class GeneticAlgorithm : MonoBehaviour
             return;
         }
 
+        //initialize population with random values of genes
         InitPopulation();
+        //Spawn random population
         SpawnPopulation();
-        UpdateHeuristicAveragesUI();
-    }
-
-    // Time: O(n) because iterating population, Space: O(1)
-    private void UpdateHeuristicAveragesUI()
-    {
-        if (population == null || population.Count == 0) return;
-
-        double sumUpper = 0.0;
-        double sumLower = 0.0;
-
-        for (int i = 0; i < population.Count; i++)
-        {
-            float[] c = population[i].chrom;
-            if (c == null || c.Length < 7) continue;
-
-            sumUpper += c[5];
-            sumLower += c[6];
-        }
-
-        float avgUpper = (float)(sumUpper / population.Count);
-        float avgLower = (float)(sumLower / population.Count);
-
-        if (upperAvgText != null) upperAvgText.text = $"Upper Heuristic Avg: {avgUpper:F3}";
-        if (lowerAvgText != null) lowerAvgText.text = $"Lower Heuristic Avg: {avgLower:F3}";
-
-        // history
-        upperHistory.Add(avgUpper);
-        lowerHistory.Add(avgLower);
-
-        // refresh plots
-        if (upperGraph != null)
-        {
-            upperGraph.seriesA = upperHistory;
-            upperGraph.SetVerticesDirty();
-        }
-        if (lowerGraph != null)
-        {
-            lowerGraph.seriesB = lowerHistory;
-            lowerGraph.SetVerticesDirty();
-        }
     }
 
 
-    // Time: O(n log n) because sorting dominates, Space: O(n) because new population
+    /*
+    ** Called at every frame. Here is where genetic algorithm loop happens
+    */
     private void Update()
     {
         timer += Time.deltaTime;
-
+        //if a certain amount of time has passed
         if (timer >= evaluationSeconds)
         {
             timer = 0f;
 
-            // 1) Read fitness from Traits
+            // Evaluate current population (P_t)
             EvaluateFitnessFromWorld();
-
-
-
-            float avgFitness = GetAverageFitness(population);
-          
-            population = NextGeneration(population);
+            
+            // M_t := Selection(P_t) - Create mating pool
+            List<Individual> matingPool = Selection(population);
+            
+            // Q_t := Variation(M_t) - Create offspring
+            List<Individual> offspring = Variation(matingPool);
+            
+            // P_{t+1} := Survivor(P_t, Q_t) - Select survivors
+            population = Survivor(population, offspring);
+            
             generation++;
 
-            UpdateHeuristicAveragesUI();
-
+            // Reset world for next generation
             DestroySpawned();
             
             // Reset all resources for next generation
@@ -266,54 +227,93 @@ public class GeneticAlgorithm : MonoBehaviour
                 continue;
             }
 
-            // Base fitness from survival (energy/health)
-            float baseFitness = t.Fitness01();
-            
-            // Final fitness = sadece hayatta kalma ve yedikleri
-            population[i].fitness = baseFitness;
+            population[i].fitness = t.Fitness01();
         }
     }
 
+    // ----------------------------
+    // GA Core - Generalized Framework of EAs
+    // ----------------------------
 
-    // Time: O(n log n) because of sorting plus O(n) generation
-    // Space: O(n), saves the new generation
-    private List<Individual> NextGeneration(List<Individual> oldPop)
+    /// <summary>
+    /// Selection: M_t := Selection(P_t)
+    /// Creates mating pool by selecting parents from current population
+    /// </summary>
+    private List<Individual> Selection(List<Individual> population)
     {
-        // Sort by fitness (desc)
-        oldPop.Sort((a, b) => b.fitness.CompareTo(a.fitness));
-
-        List<Individual> newPop = new List<Individual>();
-
-     
-        for (int i = 0; i < eliteCount && i < oldPop.Count; i++)
+        List<Individual> matingPool = new List<Individual>();
+        
+        // Select populationSize parents (with replacement) for mating
+        for (int i = 0; i < populationSize; i++)
         {
-            Individual e = new Individual();
-            e.chrom = (float[])oldPop[i].chrom.Clone();
-            e.fitness = 0f;
-            newPop.Add(e);
+            Individual parent = TournamentSelect(population, 3);
+            matingPool.Add(parent);
         }
+        
+        return matingPool;
+    }
 
-        while (newPop.Count < populationSize)
+    /// <summary>
+    /// Variation: Q_t := Variation(M_t)
+    /// Creates offspring population through crossover and mutation
+    /// </summary>
+    private List<Individual> Variation(List<Individual> matingPool)
+    {
+        List<Individual> offspring = new List<Individual>();
+        
+        // Create offspring by pairing parents from mating pool
+        for (int i = 0; i < populationSize; i++)
         {
-            Individual p1 = TournamentSelect(oldPop, 3);
-            Individual p2 = TournamentSelect(oldPop, 3);
-
-            float[] child = (float[])p1.chrom.Clone();
-
+            // Select two random parents from mating pool
+            Individual p1 = matingPool[rng.Next(matingPool.Count)];
+            Individual p2 = matingPool[rng.Next(matingPool.Count)];
+            
+            // Apply crossover
+            float[] childChrom = (float[])p1.chrom.Clone();
             if (Rand01() < crossoverRate)
             {
-                child = BLXCrossover(p1.chrom, p2.chrom, alpha);
+                childChrom = BLXCrossover(p1.chrom, p2.chrom, alpha);
             }
-
-            Mutate(child);
-
-            Individual c = new Individual();
-            c.chrom = child;
-            c.fitness = 0f;
-            newPop.Add(c);
+            
+            // Apply mutation
+            Mutate(childChrom);
+            
+            // Create offspring individual
+            Individual child = new Individual();
+            child.chrom = childChrom;
+            child.fitness = 0f;
+            offspring.Add(child);
         }
+        
+        return offspring;
+    }
 
-        return newPop;
+    /// <summary>
+    /// Survivor: P_{t+1} := Survivor(P_t, Q_t)
+    /// Combines parent and offspring populations and selects survivors
+    /// Uses elitism: keeps best from both populations
+    /// </summary>
+    private List<Individual> Survivor(List<Individual> parents, List<Individual> offspring)
+    {
+        // Combine parent and offspring populations
+        List<Individual> combined = new List<Individual>();
+        combined.AddRange(parents);
+        combined.AddRange(offspring);
+        
+        // Sort by fitness (descending)
+        combined.Sort((a, b) => b.fitness.CompareTo(a.fitness));
+        
+        // Select top populationSize individuals (elitism)
+        List<Individual> survivors = new List<Individual>();
+        for (int i = 0; i < populationSize && i < combined.Count; i++)
+        {
+            Individual survivor = new Individual();
+            survivor.chrom = (float[])combined[i].chrom.Clone();
+            survivor.fitness = 0f; // Will be evaluated next generation
+            survivors.Add(survivor);
+        }
+        
+        return survivors;
     }
 
     // Time: O(k) because k comparisons, Space: O(1)

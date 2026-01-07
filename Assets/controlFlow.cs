@@ -181,6 +181,12 @@ public class controlFlow : MonoBehaviour
             
             if (isPanelVisible)
             {
+                // Close other panels
+                if (traitGraphPanel != null) traitGraphPanel.SetActive(false);
+                if (emergenceGraphPanel != null) emergenceGraphPanel.SetActive(false);
+                isTraitGraphVisible = false;
+                isEmergenceGraphVisible = false;
+                
                 UpdateStatisticsText();
             }
         }
@@ -320,6 +326,12 @@ public class controlFlow : MonoBehaviour
             traitGraphPanel.SetActive(isTraitGraphVisible);
             if (isTraitGraphVisible)
             {
+                // Close other panels
+                if (statisticsPanel != null) statisticsPanel.SetActive(false);
+                if (emergenceGraphPanel != null) emergenceGraphPanel.SetActive(false);
+                isPanelVisible = false;
+                isEmergenceGraphVisible = false;
+                
                 UpdateTraitGraph();
             }
         }
@@ -334,6 +346,12 @@ public class controlFlow : MonoBehaviour
             emergenceGraphPanel.SetActive(isEmergenceGraphVisible);
             if (isEmergenceGraphVisible)
             {
+                // Close other panels
+                if (statisticsPanel != null) statisticsPanel.SetActive(false);
+                if (traitGraphPanel != null) traitGraphPanel.SetActive(false);
+                isPanelVisible = false;
+                isTraitGraphVisible = false;
+                
                 UpdateEmergenceGraph();
             }
         }
