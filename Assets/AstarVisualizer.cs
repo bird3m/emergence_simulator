@@ -2,20 +2,22 @@ using UnityEngine;
 using System.Collections.Generic;
 
 [RequireComponent(typeof(LineRenderer))]
+
+/**
+Visualizes the path thats calculated by the A* algorithm for an organism.
+*/
 public class AStarVisualizer : MonoBehaviour
 {
     public OrganismBehaviour organism;
     public global::Terrain terrain;
 
-    [Header("Render")]
     public float lineWidth = 0.12f;
     public int sortingOrder = 500;
     public string sortingLayerName = "Default";
 
-    [Header("Z")]
-    public float zOffset = -0.2f; // 2D’de üstte kalsın
+    public float zOffset = -0.2f; 
 
-    private LineRenderer lr;
+    private LineRenderer lr; //a tool that unity uses for rendering lines on visuals.
 
     private void Awake()
     {
@@ -29,17 +31,21 @@ public class AStarVisualizer : MonoBehaviour
         lr.numCapVertices = 6;
         lr.numCornerVertices = 6;
 
-        // Make sure it's visible above sprites
+        //visible above sprites
         lr.sortingLayerName = sortingLayerName;
         lr.sortingOrder = sortingOrder;
 
-        // MATERIAL: try a few common shaders (Built-in + URP)
         if (lr.material == null)
         {
-            Shader sh =
-                Shader.Find("Sprites/Default") ??
-                Shader.Find("Unlit/Color") ??
-                Shader.Find("Universal Render Pipeline/Unlit");
+            Shader sh = Shader.Find("Sprites/Default");
+            if (sh == null)
+            {
+                sh = Shader.Find("Unlit/Color");
+                if (sh == null)
+                {
+                    sh = Shader.Find("Universal Render Pipeline/Unlit");
+                }
+            }
 
             if (sh != null)
             {
@@ -47,7 +53,6 @@ public class AStarVisualizer : MonoBehaviour
             }
         }
 
-        // Give it a visible color even if material is Unlit/Color
         lr.startColor = Color.green;
         lr.endColor = Color.green;
     }
@@ -83,7 +88,6 @@ public class AStarVisualizer : MonoBehaviour
 
     private Vector3 NodeToWorld(PathfindingAstar.GraphNode node)
     {
-        // node.name = "x,y"
         string[] p = node.name.Split(',');
         int x = int.Parse(p[0]);
         int y = int.Parse(p[1]);
