@@ -95,7 +95,6 @@ public class OrganismBehaviour : MonoBehaviour
 
         SetRandomWanderTarget();
 
-        // traits cache (sende public ama null kalabiliyor)
         if (traits == null)
             traits = GetComponent<Traits>();
 
