@@ -1,6 +1,6 @@
 using UnityEngine;
 using TMPro;
-using UnityEngine.InputSystem; // Yeni Input System için gerekli import
+using UnityEngine.InputSystem;
 
 public class OrganismStatsDisplay : MonoBehaviour
 {
@@ -8,7 +8,7 @@ public class OrganismStatsDisplay : MonoBehaviour
 
     private void Update()
     {
-        if (Mouse.current.leftButton.wasPressedThisFrame)  // Yeni Input System ile mouse tıklama algıla
+        if (Mouse.current.leftButton.wasPressedThisFrame)
         {
             // Raycast from camera to detect what object was clicked
             if (Camera.main == null) return;

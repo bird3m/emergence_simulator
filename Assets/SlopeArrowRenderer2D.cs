@@ -2,25 +2,20 @@ using UnityEngine;
 
 public class SlopeArrowRenderer2D : MonoBehaviour
 {
-    [Header("Reference")]
-    public Terrain terrain;   // drag your terrain component here (or same object)
+    public Terrain terrain;
 
-    [Header("Arrow Look")]
     public float minArrowLength = 0.10f;   // when slope is tiny but not zero
     public float maxArrowLength = 0.50f;   // max length at abs(slope)==maxAbsSlope
     public float lineWidth = 0.05f;
     public float headSize = 0.12f;         // base head size (will be clamped by length)
-    public float zOffset = 0f;             // keep at 0 for 2D
+    public float zOffset = 0f;
 
-    [Header("Sorting (2D)")]
     public string sortingLayerName = "Default";
     public int sortingOrder = 0;
 
-    [Header("Update")]
-    public bool updateEveryFrame = false;  // set true only if slopes change often at runtime
+    public bool updateEveryFrame = false;
 
-    [Header("Flat Cells")]
-    public float flatEpsilon = 0.0001f;    // abs(slope) < this => hide arrow
+    public float flatEpsilon = 0.0001f;
 
     private LineRenderer[,] lines;
     private Material lineMaterial;

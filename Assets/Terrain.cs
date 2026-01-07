@@ -7,14 +7,11 @@ using UnityEngine;
 
 public class Terrain : MonoBehaviour
 {
-    [Header("Grid Size")]
     public int width = 20;
     public int height = 20;
 
-    [Header("Cell Settings")]
     public float cellSize = 1f;
 
-    [Header("Slope Generation")]
     [Tooltip("Slope values will be generated in range [-maxAbsSlope, +maxAbsSlope].")]
     public float maxAbsSlope = 5f;
 
@@ -29,7 +26,6 @@ public class Terrain : MonoBehaviour
 
     public int seed = 12345;
 
-    [Header("Gizmos")]
     public bool drawGizmos = true;
     public float arrowLength = 0.35f;
     public float arrowHeadSize = 0.12f;
@@ -148,7 +144,7 @@ public class Terrain : MonoBehaviour
         float wy = origin.y + (y + 0.5f) * cellSize;
         return new Vector3(wx, wy, origin.z);
     }
-    public Vector3 originWorld = Vector3.zero; // grid 0,0'ın world origin'i
+    public Vector3 originWorld = Vector3.zero;
 
     public bool WorldToCell(Vector2 world, out int x, out int y)
     {

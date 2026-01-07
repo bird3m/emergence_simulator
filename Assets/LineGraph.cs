@@ -4,11 +4,9 @@ using UnityEngine.UI;
 
 public class LineGraph : Graphic
 {
-    [Header("Data")]
-    public List<float> seriesA = new List<float>(); // upper
-    public List<float> seriesB = new List<float>(); // lower
+    public List<float> seriesA = new List<float>();
+    public List<float> seriesB = new List<float>();
 
-    [Header("Layout")]
     public float yMin = -1f;
     public float yMax =  1f;
     public float thickness = 2f;

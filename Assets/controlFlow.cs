@@ -12,11 +12,9 @@ using System.Linq;
 
 public class controlFlow : MonoBehaviour
 {
-    [Header("Statistics UI")]
     public GameObject statisticsPanel;
     public TextMeshProUGUI statisticsText;
     
-    [Header("Graph UIs")]
     public GameObject traitGraphPanel;
     public GameObject emergenceGraphPanel;
     
@@ -202,7 +200,6 @@ public class controlFlow : MonoBehaviour
     {
         if (statisticsText == null) return;
 
-        // Tüm organizmaları bul
         Traits[] allOrganisms = FindObjectsOfType<Traits>();
         
         if (allOrganisms.Length == 0)

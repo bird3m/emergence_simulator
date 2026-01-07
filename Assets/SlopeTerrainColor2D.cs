@@ -4,13 +4,11 @@ public class SlopeTerrainColor2D : MonoBehaviour
 {
     public Terrain terrain;
 
-    [Header("Mars Colors")]
     public Color marsBright = new Color(0.78f, 0.42f, 0.24f);
     public Color marsMid    = new Color(0.55f, 0.30f, 0.18f);
     public Color marsDark   = new Color(0.28f, 0.14f, 0.08f);
 
-    [Header("Rendering")]
-    public float zOffset = 1f; // behind arrows
+    public float zOffset = 1f;
     public string sortingLayerName = "Default";
     public int sortingOrder = -10;
 

@@ -2,7 +2,6 @@ using UnityEngine;
 using System;
 using System.Collections.Generic;
 
-//Class whşch controls the behaviour of an organism.
 public class OrganismBehaviour : MonoBehaviour
 {
    
@@ -424,7 +423,7 @@ public class OrganismBehaviour : MonoBehaviour
 
         if (startNode == null || goalNode == null) return;
 
-        // 4 ARGÜMAN GÖNDERİYORUZ: Artık hata vermeyecek
+
         PathfindingAstar.AStarResult result = PathfindingAstar.SolveAstar(
             startNode, 
             goalNode, 
@@ -450,7 +449,6 @@ public class OrganismBehaviour : MonoBehaviour
         if (!terrain.WorldToCell(world, out int x, out int y))
             return null;
 
-        // (Şimdilik string key ile, hızlı fix)
         string key = x + "," + y;
 
         if (nodeByName.TryGetValue(key, out var node))

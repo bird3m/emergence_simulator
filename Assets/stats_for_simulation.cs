@@ -8,7 +8,6 @@ public class stats_for_simulation : MonoBehaviour
 {
     public static stats_for_simulation Instance { get; private set; }
 
-    [Header("Resource Settings")]
     public int resourceCount = 50;
     public const int MIN_RESOURCE_COUNT = 1;
     public const int MAX_RESOURCE_COUNT = 500;
@@ -25,12 +24,10 @@ public class stats_for_simulation : MonoBehaviour
     public const float MIN_FLY_ADVANTAGE = 5f;
     public const float MAX_FLY_ADVANTAGE = 20f;
 
-    [Header("Terrain Settings")]
     public int terrainSize = 50;
     public const int MIN_TERRAIN_SIZE = 10;
     public const int MAX_TERRAIN_SIZE = 200;
 
-    [Header("Simulation Settings")]
     public float evaluationTime = 60f;
     public const float MIN_EVALUATION_TIME = 5f;
     public const float MAX_EVALUATION_TIME = 300f;
@@ -39,7 +36,6 @@ public class stats_for_simulation : MonoBehaviour
     public const int MIN_POPULATION_SIZE = 1;
     public const int MAX_POPULATION_SIZE = 500;
 
-    [Header("UI References")]
     public Slider resourceCountSlider;
     public TMP_Text resourceCountText;
     
@@ -81,7 +77,7 @@ public class stats_for_simulation : MonoBehaviour
 
     private void InitializeUI()
     {
-        // Sadece text'leri güncelle, slider değerlerini değiştirme
+
         if (resourceCountSlider != null)
         {
             resourceCount = Mathf.RoundToInt(resourceCountSlider.value);
@@ -125,7 +121,7 @@ public class stats_for_simulation : MonoBehaviour
         }
     }
 
-    // UI Slider Metodları
+
     public void SetResourceCount(float value)
     {
         resourceCount = Mathf.RoundToInt(Mathf.Clamp(value, MIN_RESOURCE_COUNT, MAX_RESOURCE_COUNT));
@@ -168,7 +164,7 @@ public class stats_for_simulation : MonoBehaviour
         UpdateFlyAdvantageText(flyAdvantage);
     }
 
-    // Text güncelleme metodları
+
     private void UpdateResourceCountText(int value)
     {
         if (resourceCountText != null)
