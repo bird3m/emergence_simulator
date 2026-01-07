@@ -383,7 +383,7 @@ public class GeneticAlgorithm : MonoBehaviour
 
     private float[] RandomChromosome()
     {
-        float[] c = new float[9];
+        float[] c = new float[6];
 
         // [0..1]
         c[0] = Rand01(); // mass
@@ -392,12 +392,8 @@ public class GeneticAlgorithm : MonoBehaviour
         c[3] = Rand01(); // agression
         c[4] = Rand01(); // risk_aversion
 
-        // heuristic [-1..1]
-        c[5] = UnityEngine.Random.Range(-1f, 1f); // upperSlopeHeuristic
-        c[6] = UnityEngine.Random.Range(-1f, 1f); // lowerSlopeHeuristic
-
         // [0..1]
-        c[7] = Rand01(); // danger_weight
+        c[5] = Rand01(); // danger_weight
 
 
         return c;
@@ -406,12 +402,7 @@ public class GeneticAlgorithm : MonoBehaviour
 
     private float ClampGene(int index, float value)
     {
-        // heuristic gene is [-1..1], others [0..1]
-        if (index == 5 || index == 6)
-        {
-            return Mathf.Clamp(value, -1f, 1f);
-        }
-
+        // All genes are [0..1]
         return Mathf.Clamp01(value);
     }
 
