@@ -4,7 +4,7 @@ using UnityEngine;
 public class Traits : MonoBehaviour
 {
     #region genes (0..1 except heuristic)
-    // Energy state (health now based on energy)
+    // Energy, also means health
     public float maxEnergy;
     public float currentEnergy =50f;
 
@@ -27,21 +27,12 @@ public class Traits : MonoBehaviour
     public bool can_cautiousPathing;
     #endregion
 
-    [Header("Scarcity Tuning")]
-    [Tooltip("If resources per organism falls below this ratio, aggression is boosted")]
-    public float scarcityThreshold = 0.5f;
-    [Tooltip("Maximum additional aggression added when scarcity is extreme (0..1)")]
-    public float maxAggressionBoost = 0.6f;
-
-    [Header("Scavenger Tuning")]
-    [Tooltip("Carcass/org ratio above which scavenging preference increases")]
+    //Being a scavenger more likely to happen if there are lots of carcasses on environment
     public float carcassThresholdRatio = 0.02f;
-    [Tooltip("Amount to boost effective risk_aversion/danger_weight and lower aggression when carcasses abundant (0..1)")]
     public float carcassBoost = 0.4f;
 
-    private bool loggedCarnivoreChecked = false;
 
-   
+   //CHROMOSM FOR GENETIC ALGORITHMS
     public float[] chromosm;
 
     // derived from genes
@@ -52,34 +43,33 @@ public class Traits : MonoBehaviour
     public float MoveEnergyCostPerUnit;
     public float Boldness;
 
-    // optional: heuristic bias scale (heuristic gene is [-1,1])
-    public float maxHeuristicBias = 0.30f; // +-0.10 as you described
 
     public Sprite corpseSprite;          // corpse sprite
     public float corpseNutrition = 30f;  // nutrition from corpse
 
-    public int carcassExpireAfterGenerations = 2;
     public bool hasBecomeCarcass = false;
-    
-    // Movement tracking for fitness (higher movement = more active = better)
-    public float totalMovementDistance = 0f;
 
-     public bool flag = false;
-    private bool loggedCanFly = false;
-
+    /// Initialize traits from chromosome and compute derived values.
+    /// Time Complexity: O(1) - now uses cached lists
+    /// Space Complexity: O(1)
     private void Awake()
     {
         // If chromosome exists and has values, load from it.
         if (chromosm != null && chromosm.Length >= 6)
         {
+            //load genes from chromosm
             LoadFromChromosome();
         }
-
+        //derive traits and emergences from base traits
         RecomputeAll();
         InitializeEnergy();  // Initialize energy only
 
     }
 
+    /// Apply chromosome values and recompute all derived traits.
+    /// Called after GA assigns new chromosome.
+    /// Time Complexity: O(1) - now uses cached lists
+    /// Space Complexity: O(1)
     public void ApplyChromosomeAndRecompute()
     {
         if (chromosm != null && chromosm.Length >= 6)
@@ -87,15 +77,15 @@ public class Traits : MonoBehaviour
             LoadFromChromosome();
         }
 
-        // Reset one-time debug flags so emergence logs will appear after GA assigns chromosome
-        loggedCanFly = false;
-        loggedCarnivoreChecked = false;
-
         RecomputeAll();
     }
 
+    /// Load gene values from chromosome array.
+    /// Time Complexity: O(1) - fixed 6 gene assignments
+    /// Space Complexity: O(1)
     private void LoadFromChromosome()
     {
+        //Clamp01 helps us crop the value between 0 and 1
         mass = Mathf.Clamp01(chromosm[0]);
         muscle_mass = Mathf.Clamp01(chromosm[1]);
         metabolic_rate = Mathf.Clamp01(chromosm[2]);
@@ -105,6 +95,9 @@ public class Traits : MonoBehaviour
         danger_weight = Mathf.Clamp01(chromosm[5]);
     }
 
+    /// Recompute all derived traits and emergences from genes.
+    /// Time Complexity: O(1) - now uses cached lists
+    /// Space Complexity: O(1)
     private void RecomputeAll()
     {
         EffectiveMass = GetEffectiveMass();
@@ -117,62 +110,64 @@ public class Traits : MonoBehaviour
         EvaluateEmergences();
     }
 
-    // ---------------------------
-    // Derived equations
-    // ---------------------------
-
+    //derived from muscle_mass and mass
+    /// Calculate effective mass from base mass and muscle mass.
+    /// Time Complexity: O(1)
+    /// Space Complexity: O(1)
     public float GetEffectiveMass()
     {
         const float kMuscle = 0.60f;
         return Mathf.Clamp01(mass + kMuscle * muscle_mass);
     }
 
+    //derived from mass and effective_mass
+    /// Calculate power-to-weight ratio.
+    /// Time Complexity: O(1)
+    /// Space Complexity: O(1)
     public float GetPowerToWeight(float effectiveMass)
     {
         const float eps = 1e-4f;
         return Mathf.Clamp01(muscle_mass / (effectiveMass + eps));
     }
 
+    //derived from metabolismic rate and power_to_weight
+    /// Calculate organism speed from power-to-weight and metabolic rate.
+    /// Time Complexity: O(1)
+    /// Space Complexity: O(1)
     public float GetSpeed(float powerToWeight)
     {
-        // Balanced speed calculation
         float metabolicSpeed = metabolic_rate * 1.6f;  
         float speed = (1.75f * powerToWeight) + (1.25f * metabolicSpeed);
 
         return Mathf.Clamp(speed, 0.1f, 5f);
     }
 
+    /// Initialize maximum and current energy based on mass.
+    /// Time Complexity: O(1)
+    /// Space Complexity: O(1)
     public void InitializeEnergy()
     {
-        // Kütle arttıkça enerji kapasitesi katlanarak artsın
+        // Energy capacity increased propertionally with mass
         maxEnergy = 50f + (250f * Mathf.Pow(mass, 2)); 
         currentEnergy = maxEnergy * 0.8f;
     }
 
-    // 2. Metabolizmayı "Açlık Hızı" Yap, Kasları "Hız" Yap
+    /// Calculate baseline energy drain per second (idle cost).
+    /// Time Complexity: O(1)
+    /// Space Complexity: O(1)
     public float GetBaselineEnergyDrain()
     {
-        // SUPER OP CARNIVORE: Carnivores have NO baseline drain (only movement costs)
-        if (is_carnivore)
-            return 0.05f; // Nearly zero baseline drain
-        
-        // PARETO BASKISI: Metabolizma hızı yüksek olanın "rölanti" harcaması da yüksek olur.
-        // Ancak kütle arttıkça bazal tüketim verimliliği artar (Kleiber kanunu simülasyonu)
+
         const float minDrain = 0.3f;
         float metabolicTax = 1.2f * metabolic_rate;
         float sizeTax = 0.5f * mass;
-        
-        // LOW MASS PENALTY: Çok düşük mass = kırılgan vücut, daha fazla bakım gerektirir
-        // Mass < 0.3 ise ekstra enerji harcar (homeostasis maliyeti)
-        float lowMassPenalty = 0f;
-        if (mass < 0.3f)
-        {
-            lowMassPenalty = (0.3f - mass) * 0.8f; // 0.1 mass -> +0.16 drain
-        }
 
-        return minDrain + metabolicTax + sizeTax + lowMassPenalty;
+        return minDrain + metabolicTax + sizeTax;
     }
 
+    /// Calculate energy cost per unit of movement.
+    /// Time Complexity: O(1)
+    /// Space Complexity: O(1)
     public float GetMoveEnergyCostPerUnit(float effectiveMass, float speed)
     {
         const float eps = 1e-4f;
@@ -180,44 +175,23 @@ public class Traits : MonoBehaviour
         return Mathf.Clamp(cost, 0.1f, 3.0f);
     }
 
+    /// Calculate boldness as inverse of risk aversion.
+    /// Time Complexity: O(1)
+    /// Space Complexity: O(1)
     public float GetBoldness()
     {
         return Mathf.Clamp01(1f - risk_aversion);
     }
 
-    // ---------------------------
-    // Emergence checks
-    // Final emergences:
-    // can_fly, is_scavenging, is_carnivore, can_cautiousPathing
-    // ---------------------------
+    //EMERGENCE CHECKS
 
+    /// Evaluate emergent behaviors: carnivore, flying, scavenging, cautious pathing.
+    /// Time Complexity: O(1) - uses cached lists instead of FindObjectsOfType
+    /// Space Complexity: O(1) - no additional data structures allocated
     public void EvaluateEmergences()
     {
-        // Evaluate carnivore FIRST (needed for can_fly check)
-        float effectiveAggressionForCarnivore = agression;
-        try
-        {
-            if (SourceManager.I != null)
-            {
-                int resourceCount = SourceManager.I.sources.Count;
-                int orgCount = (GeneticAlgorithm.Organisms != null) ? GeneticAlgorithm.Organisms.Count : 1;
-                float resourceRatio = (float)resourceCount / Mathf.Max(1, orgCount);
-
-                if (resourceRatio < scarcityThreshold)
-                {
-                    float scarcity = 1f - (resourceRatio / scarcityThreshold);
-                    float aggressionBoost = scarcity * maxAggressionBoost;
-                    effectiveAggressionForCarnivore = Mathf.Clamp01(agression + aggressionBoost);
-                }
-            }
-        }
-        catch (Exception)
-        {
-            // ignore and use base aggression
-        }
-
-        // VERY LOWERED: Carnivore emergence thresholds very easy to achieve
-        is_carnivore = (effectiveAggressionForCarnivore >= 0.30f) && (PowerToWeight >= 0.30f) && (metabolic_rate >= 0.20f) && (risk_aversion <= 0.85f);
+        //carnivorism requires high agression, powerToWeight, metabolic_rate and low agression
+        is_carnivore = (agression >= 0.50f) && (PowerToWeight >= 0.60f) && (metabolic_rate >= 0.40f) && (risk_aversion <= 0.65f);
 
         // Flying requires high investment: low mass, high power, high metabolism
         can_fly = (EffectiveMass <= 0.45f) && (PowerToWeight >= 0.65f) && (metabolic_rate >= 0.60f);
@@ -229,10 +203,11 @@ public class Traits : MonoBehaviour
 
         try
         {
-            int carcassCount = GameObject.FindObjectsOfType<Carcass>().Length;
-            int orgCount = (GeneticAlgorithm.Organisms != null) ? GeneticAlgorithm.Organisms.Count : GameObject.FindObjectsOfType<OrganismBehaviour>().Length;
+            int carcassCount = (GeneticAlgorithm.Carcasses != null) ? GeneticAlgorithm.Carcasses.Count : 0;
+            int orgCount = (GeneticAlgorithm.Organisms != null) ? GeneticAlgorithm.Organisms.Count : 1;
             float carcassRatio = (float)carcassCount / Mathf.Max(1, orgCount);
 
+            //being scavenger is easier if many carcasses exist
             if (carcassRatio >= carcassThresholdRatio)
             {
                 effectiveRiskAversion = Mathf.Clamp01(risk_aversion + carcassBoost);
@@ -245,58 +220,23 @@ public class Traits : MonoBehaviour
             // ignore and use base genes
         }
 
-        // VERY LOWERED: Scavenging emergence thresholds very easy to achieve
+        //being a scavenger requires high risk aversion, high danger weight and low agression
         is_scavenging = (effectiveRiskAversion >= 0.30f) && (effectiveDangerWeight >= 0.30f) && (effectiveAgressionForScav <= 0.80f);
 
-        // Cautious pathing: VERY EASY threshold
-        // Savunmacı strateji - yol bulma avantajı var
+        // if not carnivore and has high risk aversion and danger weight, A* can consider carnivores as obstacles. Safer PathFinding 
         can_cautiousPathing = (risk_aversion >= 0.30f) && (danger_weight >= 0.25f) && !is_carnivore && (agression <= 0.75f);
 
-        // Debug: log the numeric values used for carnivore decision once so we can see why none emerge
-        try
-        {
-            if (!loggedCarnivoreChecked)
-            {
-                //Debug.Log(gameObject.name + ": EvaluateEmergences values -> agression=" + agression.ToString("F2") + ", PowerToWeight=" + PowerToWeight.ToString("F2") + ", metabolic_rate=" + metabolic_rate.ToString("F2") + ", risk_aversion=" + risk_aversion.ToString("F2") + " => is_carnivore=" + is_carnivore);
-                loggedCarnivoreChecked = true;
-            }
-        }
-        catch (Exception)
-        {
-            // ignore
-        }
-
-        // Debug: log when flying emergence appears or disappears (only once per change)
-        try
-        {
-            if (can_fly && !loggedCanFly)
-            {
-                //Debug.Log(gameObject.name + ": can_fly emerged (EffectiveMass=" + EffectiveMass.ToString("F2") + ", PowerToWeight=" + PowerToWeight.ToString("F2") + ")");
-                loggedCanFly = true;
-            }
-            else if (!can_fly && loggedCanFly)
-            {
-                //Debug.Log(gameObject.name + ": can_fly lost");
-                loggedCanFly = false;
-            }
-        }
-        catch (Exception)
-        {
-            // Ignore logging errors in editor/runtime
-        }
     }
 
-    // ---------------------------
-    // Energy + fitness
-    // ---------------------------
+    //ENERGY AND FITNESS
 
+    /// Consume energy/nutrition and add to current energy with metabolic efficiency.
+    /// Time Complexity: O(1)
+    /// Space Complexity: O(1)
     public void Eat(float energy)
     {
-        // METABOLIC EFFICIENCY: Yüksek metabolizma = besinlerden daha fazla enerji
-        // Yüksek metabolizma = hızlı VE verimli sindirim, besinlerden çok enerji alır
-        // Düşük metabolizma = yavaş sindirim, besinlerden az enerji alır
-        
-        // Metabolic efficiency: 0.0 metabolizma -> 0.5x enerji, 1.0 metabolizma -> 1.5x enerji
+       
+        // Metabolic efficiency: 0.0 metabolism -> 0.5x energy, 1.0 metabolism -> 1.5x energy
         float metabolicEfficiency = Mathf.Lerp(0.5f, 1.5f, metabolic_rate);
         
         float gainedEnergy = energy * metabolicEfficiency;
@@ -306,70 +246,67 @@ public class Traits : MonoBehaviour
         currentEnergy = Mathf.Clamp(currentEnergy, 0f, maxEnergy); 
     }
 
+    /// Update energy based on movement, baseline drain, and aging per frame.
+    /// Time Complexity: O(1)
+    /// Space Complexity: O(1)
     public void UpdateVitals(float movementDistance, float deltaTime)
     {
         const float ENERGY_REGEN_PER_SEC = 1.0f;
         const float REGEN_ENERGY_THRESHOLD = 0.85f; // must have >=85% energy to regen
 
-        // 1) Compute total energy drain
+        // Compute total energy drain
         float dt = Mathf.Max(1e-6f, deltaTime);
 
         // movementDistance is a per-frame distance; convert to units/sec
         float movementSpeed = movementDistance / dt;
 
-        float energyDrainPerSec = BaselineEnergyDrain + (MoveEnergyCostPerUnit * movementSpeed);
+        float energyDrainPerSec = BaselineEnergyDrain + (MoveEnergyCostPerUnit * movementSpeed);      
 
-        // small aging/maintenance drain so there's always a gentle pressure to die over long runs
-        float agingDrainPerSec = 0.02f + 0.025f * metabolic_rate;
-
-        // use deltaTime passed from caller
-        float energyLoss = (energyDrainPerSec + agingDrainPerSec) * dt;
-      
-
-        // 2) Pay from energys
+        float energyLoss = energyDrainPerSec * dt;
+        // Pay from energys
         currentEnergy -= energyLoss;
 
-        // 3) If energy below 0 -> convert deficit into health damage
+        // If energy below 0, convert deficit into health damage
         if (currentEnergy < 0f)
         {
             currentEnergy = 0f;
             Die();
         }
 
-        //slow health regen if energy is high
-        if (currentEnergy / Mathf.Max(maxEnergy, 1e-4f) >= REGEN_ENERGY_THRESHOLD)
-        {
-            currentEnergy += ENERGY_REGEN_PER_SEC * dt;
-        }
-
         currentEnergy = Mathf.Clamp(currentEnergy, 0f, maxEnergy);
         
         Die();
-       
-
+    
     }
 
+    /// Check if dead and convert to carcass resource.
+    /// Time Complexity: O(1)
+    /// Space Complexity: O(1)
     public void Die()
     {
          if (IsDead() && !hasBecomeCarcass)
             DieIntoResource();
     }
 
+    /// Check if organism is dead (energy <= 0).
+    /// Time Complexity: O(1)
+    /// Space Complexity: O(1)
     public bool IsDead()
     {
         return currentEnergy <= 0f;
     }
 
-    /// <summary>
-    /// Fitness in [0..1]. GA can maximize this.
-    /// Simple: remaining energy fraction.
-    /// </summary>
+    //Return ratio of currentEnergy over maxEnergy
     public float Fitness01()
     {
         if (maxEnergy <= 1e-4f) return 0f;
         return Mathf.Clamp01(currentEnergy / maxEnergy);
     }
 
+    // Becomes a carcass and is available to eat if dead
+    /// Convert dead organism into a carcass resource that can be consumed.
+    /// Time Complexity: O(1) - assumes SourceManager.Register is O(1)
+    /// Space Complexity: O(1)
     public void DieIntoResource()
     {
         hasBecomeCarcass = true;
@@ -386,26 +323,43 @@ public class Traits : MonoBehaviour
             rb.simulated = false;  // Make it static
         }
 
+        //change appearance
         SpriteRenderer sr = GetComponent<SpriteRenderer>();
         if (sr != null && corpseSprite != null)
             sr.sprite = corpseSprite;
 
-        // 3) Add Resource component
+        // Add Resource component if non-existent
         resource resource = GetComponent<resource>();
         if (resource == null)
             resource = gameObject.AddComponent<resource>();
 
-        // SUPER INCREASED: Carcass nutrition EXTREMELY high (3x + 60)
-        // Scavenging emergence becomes VERY OP
-        resource.nutrition = currentEnergy * 3.0f + 60f; // ÇOOK arttırıldı: emergencelar OP olsun
+        // Scavenging emergence becomes selectable
+        resource.nutrition = currentEnergy * 3.0f + 60f;
 
         if (SourceManager.I != null)
             SourceManager.I.Register(GetComponent<resource>());
+        
+        // Register as carcass in GeneticAlgorithm cache
+        Carcass carcassComponent = GetComponent<Carcass>();
+        if (carcassComponent != null)
+        {
+            GeneticAlgorithm.RegisterCarcass(carcassComponent);
+        }
     }
 
+    /// Unity lifecycle: unregister from SourceManager when disabled.
+    /// Time Complexity: O(1) - considering SourceManager.Unregister is O(1)
+    /// Space Complexity: O(1)
     private void OnDisable()
     {
         if (SourceManager.I != null)
             SourceManager.I.Unregister(GetComponent<resource>());
+        
+        // Unregister carcass if it exists
+        Carcass carcassComponent = GetComponent<Carcass>();
+        if (carcassComponent != null)
+        {
+            GeneticAlgorithm.UnregisterCarcass(carcassComponent);
+        }
     }
 }

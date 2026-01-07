@@ -36,6 +36,9 @@ public class GeneticAlgorithm : MonoBehaviour
     // Spawned organisms are cached
     public static List<OrganismBehaviour> Organisms = new List<OrganismBehaviour>();
 
+    // Carcasses are cached for performance (avoids FindObjectsOfType)
+    public static List<Carcass> Carcasses = new List<Carcass>();
+
     //Unity specific function for adding spawned individuals to spawned list
     public static void RegisterOrganism(OrganismBehaviour ob)
     {
@@ -48,6 +51,20 @@ public class GeneticAlgorithm : MonoBehaviour
     {
         if (ob == null) return;
         Organisms.Remove(ob);
+    }
+
+    //Register carcass to cached list
+    public static void RegisterCarcass(Carcass carcass)
+    {
+        if (carcass == null) return;
+        if (!Carcasses.Contains(carcass)) Carcasses.Add(carcass);
+    }
+
+    //Unregister carcass from cached list
+    public static void UnregisterCarcass(Carcass carcass)
+    {
+        if (carcass == null) return;
+        Carcasses.Remove(carcass);
     }
 
     //counter for evaluation seconds
@@ -116,6 +133,9 @@ public class GeneticAlgorithm : MonoBehaviour
             // Reset world for next generation
             DestroySpawned();
             
+            // Clear carcasses list for new generation
+            Carcasses.Clear();
+            
             // Reset all resources for next generation
             if (spawner != null)
             {
@@ -125,9 +145,18 @@ public class GeneticAlgorithm : MonoBehaviour
             SpawnPopulation();
         }
 
-        foreach (Carcass c in FindObjectsOfType<Carcass>())
+        // Update carcasses using cached list instead of FindObjectsOfType
+        for (int i = Carcasses.Count - 1; i >= 0; i--)
         {
-            c.TickGeneration(generation);
+            if (Carcasses[i] != null)
+            {
+                Carcasses[i].TickGeneration(generation);
+            }
+            else
+            {
+                // Remove null entries
+                Carcasses.RemoveAt(i);
+            }
         }
 
     }
