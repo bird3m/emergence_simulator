@@ -17,7 +17,8 @@ public class BarsUI : MonoBehaviour
 
     private void Update()
     {
-        if (traits == null) return;
+        if (traits == null) 
+            return;
         healthSlider.value = traits.currentEnergy;
 
     }

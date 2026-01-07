@@ -19,6 +19,8 @@ public class AStarVisualizer : MonoBehaviour
 
     private LineRenderer lr; //a tool that unity uses for rendering lines on visuals.
 
+    // Time: O(1) 
+    // Space: O(1)
     private void Awake()
     {
         lr = GetComponent<LineRenderer>();
@@ -57,6 +59,7 @@ public class AStarVisualizer : MonoBehaviour
         lr.endColor = Color.green;
     }
 
+    // Time: O(n) because iterating through path, Space: O(1)
     private void LateUpdate()
     {
         if (organism == null)
@@ -86,6 +89,8 @@ public class AStarVisualizer : MonoBehaviour
         }
     }
 
+    // Time: O(1)
+    //  Space: O(1)
     private Vector3 NodeToWorld(PathfindingAstar.GraphNode node)
     {
         string[] p = node.name.Split(',');

@@ -37,12 +37,14 @@ public class GeneticAlgorithm : MonoBehaviour
     // Central registry of active organisms to avoid FindObjectsOfType calls.
     public static List<OrganismBehaviour> Organisms = new List<OrganismBehaviour>();
 
+    // Time: O(n)
     public static void RegisterOrganism(OrganismBehaviour ob)
     {
         if (ob == null) return;
         if (!Organisms.Contains(ob)) Organisms.Add(ob);
     }
 
+    // Time: O(n) because Remove is linear, Space: O(1)
     public static void UnregisterOrganism(OrganismBehaviour ob)
     {
         if (ob == null) return;
@@ -67,6 +69,7 @@ public class GeneticAlgorithm : MonoBehaviour
     public SourceSpawner spawner;
     public float alpha = 0.5f; // Blend factor for BLX-α Crossover
 
+    // Time: O(n) because initializing population, Space: O(n) because storing population
     private void Start()
     {
         // Read values from singleton if available
@@ -90,6 +93,7 @@ public class GeneticAlgorithm : MonoBehaviour
         UpdateHeuristicAveragesUI();
     }
 
+    // Time: O(n) because iterating population, Space: O(1)
     private void UpdateHeuristicAveragesUI()
     {
         if (population == null || population.Count == 0) return;
@@ -130,6 +134,7 @@ public class GeneticAlgorithm : MonoBehaviour
     }
 
 
+    // Time: O(n log n) because sorting dominates, Space: O(n) because new population
     private void Update()
     {
         timer += Time.deltaTime;
@@ -141,20 +146,15 @@ public class GeneticAlgorithm : MonoBehaviour
             // 1) Read fitness from Traits
             EvaluateFitnessFromWorld();
 
-           /* // LOG BEST of CURRENT generation (before NextGeneration resets fitness)
-            Individual bestOld = GetBest(population);
-            Debug.Log($"Generation {generation} | best fitness: {bestOld.fitness:F3}");*/
 
 
             float avgFitness = GetAverageFitness(population);
-            // debug log removed
-            
+          
             population = NextGeneration(population);
             generation++;
 
             UpdateHeuristicAveragesUI();
 
-            // 3) Reset world
             DestroySpawned();
             
             // Reset all resources for next generation
@@ -166,18 +166,12 @@ public class GeneticAlgorithm : MonoBehaviour
             SpawnPopulation();
         }
 
-        foreach (Carcass c in FindObjectsOfType<Carcass>())
-        {
-            c.TickGeneration(generation);
-        }
 
     }
 
 
-    // ----------------------------
-    // Init / Spawn / Destroy
-    // ----------------------------
 
+    // Time: O(n) because creating n individuals, Space: O(n) because storing population
     private void InitPopulation()
     {
         population.Clear();
@@ -191,6 +185,7 @@ public class GeneticAlgorithm : MonoBehaviour
         }
     }
 
+    // Time: O(n) because spawning n organisms, Space: O(n) because storing spawned list
     private void SpawnPopulation()
     {
         spawned.Clear();
@@ -218,6 +213,7 @@ public class GeneticAlgorithm : MonoBehaviour
         }
     }
 
+    // Time: O(1) because simple calculations, Space: O(1)
     private Vector3 GetSpawnPos(int i)
     {
         // If you still want to support manual spawn points, keep this block
@@ -239,6 +235,7 @@ public class GeneticAlgorithm : MonoBehaviour
     }
 
 
+    // Time: O(n) because destroying n objects, Space: O(1)
     private void DestroySpawned()
     {
         for (int i = 0; i < spawned.Count; i++)
@@ -248,10 +245,9 @@ public class GeneticAlgorithm : MonoBehaviour
         spawned.Clear();
     }
 
-    // ----------------------------
-    // Fitness
-    // ----------------------------
+ 
 
+    // Time: O(n) because it evaluates n individuals, Space: O(1)
     private void EvaluateFitnessFromWorld()
     {
         for (int i = 0; i < population.Count; i++)
@@ -278,10 +274,9 @@ public class GeneticAlgorithm : MonoBehaviour
         }
     }
 
-    // ----------------------------
-    // GA Core
-    // ----------------------------
 
+    // Time: O(n log n) because of sorting plus O(n) generation
+    // Space: O(n), saves the new generation
     private List<Individual> NextGeneration(List<Individual> oldPop)
     {
         // Sort by fitness (desc)
@@ -289,7 +284,7 @@ public class GeneticAlgorithm : MonoBehaviour
 
         List<Individual> newPop = new List<Individual>();
 
-        // 1) Elites
+     
         for (int i = 0; i < eliteCount && i < oldPop.Count; i++)
         {
             Individual e = new Individual();
@@ -298,7 +293,6 @@ public class GeneticAlgorithm : MonoBehaviour
             newPop.Add(e);
         }
 
-        // 2) Children
         while (newPop.Count < populationSize)
         {
             Individual p1 = TournamentSelect(oldPop, 3);
@@ -322,6 +316,7 @@ public class GeneticAlgorithm : MonoBehaviour
         return newPop;
     }
 
+    // Time: O(k) because k comparisons, Space: O(1)
     private Individual TournamentSelect(List<Individual> pop, int k)
     {
         Individual best = null;
@@ -340,6 +335,8 @@ public class GeneticAlgorithm : MonoBehaviour
         return best;
     }
 
+    // Time: O(m) because iterating m genes
+    // Space: O(m) we are creating a new child chromosome
     private float[] BLXCrossover(float[] parent1, float[] parent2, float alpha = 0.3f)
     {
         float[] child = new float[parent1.Length];
@@ -361,6 +358,7 @@ public class GeneticAlgorithm : MonoBehaviour
 
 
 
+    // Time: O(m) because iterating m genes, Space: O(1)
     private void Mutate(float[] chrom, float mutationRate = 0.08f, float mutationStep = 0.15f)
     {
         for (int i = 0; i < chrom.Length; i++)
@@ -379,10 +377,10 @@ public class GeneticAlgorithm : MonoBehaviour
 
 
 
-    // ----------------------------
-    // Chromosome helpers
-    // ----------------------------
 
+
+    // Time: O(1) because fixed size array
+    // Space: O(1)
     private float[] RandomChromosome()
     {
         float[] c = new float[6];
@@ -402,17 +400,24 @@ public class GeneticAlgorithm : MonoBehaviour
     }
 
 
+    // Time: O(1)
+    // Space: O(1)
     private float ClampGene(int index, float value)
     {
         // All genes are [0..1]
         return Mathf.Clamp01(value);
     }
 
+    // Time: O(1)
+    // Space: O(1)
     private float Rand01()
     {
         return UnityEngine.Random.Range(0f, 1f);
     }
 
+    // Time: O(n) because iterating population
+    // Space: O(1)
+    //gets the best individual from the population
     private Individual GetBest(List<Individual> pop)
     {
         Individual best = pop[0];
@@ -423,26 +428,36 @@ public class GeneticAlgorithm : MonoBehaviour
         return best;
     }
 
-    private class Individual
+    private class Individual //individual class
     {
         public float[] chrom;
         public float fitness;
     }
 
+    // Time: O(n) because we sum n values where n is the population size.
+    //  Space: O(1)
     private float GetAverageFitness(List<Individual> population)
     {
         float totalFitness = 0f;
         int count = 0;
 
-        // Population içindeki her organizmanın fitness'ını topla
         for (int i = 0; i < population.Count; i++)
         {
             totalFitness += population[i].fitness;
             count++;
         }
 
-        // Ortalama fitness değeri
-        return count > 0 ? totalFitness / count : 0f;
+        // Calculate and return average fitness
+        if (count > 0)
+        {
+            float averageFitness = totalFitness / count;
+            return averageFitness;
+        }
+        else
+        {
+            // No individuals, return 0
+            return 0f;
+        }
     }
 
 }
