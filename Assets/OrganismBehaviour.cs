@@ -350,9 +350,6 @@ public class OrganismBehaviour : MonoBehaviour
         // -------------------------
         float movedDistance = Vector2.Distance((Vector2)transform.position, beforeMove);
         
-        // Track total movement distance for fitness (hareket baskısı)
-        if (traits != null)
-            traits.totalMovementDistance += movedDistance;
 
         float mult = 1f;
 
@@ -775,8 +772,8 @@ public class OrganismBehaviour : MonoBehaviour
         
         if (traits != null && traits.can_cautiousPathing)
         {
-            // BASE BONUS: Cautious organisms always use 40% less energy for pathfinding
-            cautiousCostMultiplier = 0.6f;
+            // BASE BONUS: Cautious organisms use 70% less energy for pathfinding (ULTRA OP)
+            cautiousCostMultiplier = 0.3f;
             
             // CARNIVORE AVOIDANCE: Treat carnivores as obstacles (HIGH cost near them)
             Vector2 cellPos = GetNodePosition(toNode);

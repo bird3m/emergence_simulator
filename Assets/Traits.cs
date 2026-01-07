@@ -157,7 +157,6 @@ public class Traits : MonoBehaviour
     /// Space Complexity: O(1)
     public float GetBaselineEnergyDrain()
     {
-
         const float minDrain = 0.3f;
         float metabolicTax = 1.2f * metabolic_rate;
         float sizeTax = 0.5f * mass;
@@ -203,7 +202,7 @@ public class Traits : MonoBehaviour
 
         try
         {
-            int carcassCount = (GeneticAlgorithm.Carcasses != null) ? GeneticAlgorithm.Carcasses.Count : 0;
+            int carcassCount = GeneticAlgorithm.CarcassCount;
             int orgCount = (GeneticAlgorithm.Organisms != null) ? GeneticAlgorithm.Organisms.Count : 1;
             float carcassRatio = (float)carcassCount / Mathf.Max(1, orgCount);
 
@@ -238,6 +237,14 @@ public class Traits : MonoBehaviour
        
         // Metabolic efficiency: 0.0 metabolism -> 0.5x energy, 1.0 metabolism -> 1.5x energy
         float metabolicEfficiency = Mathf.Lerp(0.5f, 1.5f, metabolic_rate);
+        
+        // ULTRA OP CARNIVORE: Carnivores extract 8x base energy from meat
+        if (is_carnivore)
+            metabolicEfficiency *= 8.0f; // 8x energy gain for carnivores (EXTREMELY OP)
+        
+        // ULTRA OP SCAVENGER: Scavengers extract 6x energy from carcasses
+        if (is_scavenging)
+            metabolicEfficiency *= 6.0f; // 6x energy gain for scavengers (EXTREMELY OP)
         
         float gainedEnergy = energy * metabolicEfficiency;
         currentEnergy += gainedEnergy;
@@ -339,12 +346,8 @@ public class Traits : MonoBehaviour
         if (SourceManager.I != null)
             SourceManager.I.Register(GetComponent<resource>());
         
-        // Register as carcass in GeneticAlgorithm cache
-        Carcass carcassComponent = GetComponent<Carcass>();
-        if (carcassComponent != null)
-        {
-            GeneticAlgorithm.RegisterCarcass(carcassComponent);
-        }
+        // Register as carcass in GeneticAlgorithm counter
+        GeneticAlgorithm.RegisterCarcass();
     }
 
     /// Unity lifecycle: unregister from SourceManager when disabled.
@@ -355,11 +358,10 @@ public class Traits : MonoBehaviour
         if (SourceManager.I != null)
             SourceManager.I.Unregister(GetComponent<resource>());
         
-        // Unregister carcass if it exists
-        Carcass carcassComponent = GetComponent<Carcass>();
-        if (carcassComponent != null)
+        // Unregister carcass if it was one
+        if (hasBecomeCarcass)
         {
-            GeneticAlgorithm.UnregisterCarcass(carcassComponent);
+            GeneticAlgorithm.UnregisterCarcass();
         }
     }
 }
