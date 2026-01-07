@@ -18,8 +18,6 @@ public class Traits : MonoBehaviour
     [Range(0f, 1f)] public float risk_aversion;
 
     // heuristic traits
-    [Range(-1f, 1f)] public float upperSlopeHeuristic;
-    [Range(-1f, 1f)] public float lowerSlopeHeuristic;
     [Range(0f, 1f)] public float danger_weight;
 
     // emergences (derived, NOT genes)
@@ -72,7 +70,7 @@ public class Traits : MonoBehaviour
     private void Awake()
     {
         // If chromosome exists and has values, load from it.
-        if (chromosm != null && chromosm.Length >= 9)
+        if (chromosm != null && chromosm.Length >= 6)
         {
             LoadFromChromosome();
         }
@@ -84,7 +82,7 @@ public class Traits : MonoBehaviour
 
     public void ApplyChromosomeAndRecompute()
     {
-        if (chromosm != null && chromosm.Length >= 9)
+        if (chromosm != null && chromosm.Length >= 6)
         {
             LoadFromChromosome();
         }
@@ -104,10 +102,7 @@ public class Traits : MonoBehaviour
         agression = Mathf.Clamp01(chromosm[3]);
         risk_aversion = Mathf.Clamp01(chromosm[4]);
 
-        upperSlopeHeuristic = Mathf.Clamp(chromosm[5], -1f, 1f);
-        lowerSlopeHeuristic = Mathf.Clamp(chromosm[6], -1f, 1f);
-
-        danger_weight = Mathf.Clamp01(chromosm[7]);
+        danger_weight = Mathf.Clamp01(chromosm[5]);
     }
 
     private void RecomputeAll()

@@ -313,8 +313,6 @@ MonoBehaviour:
   metabolic_rate: 0
   agression: 0
   risk_aversion: 0
-  upperSlopeHeuristic: 0
-  lowerSlopeHeuristic: 0
   danger_weight: 0
   can_fly: 0
   is_scavenging: 0

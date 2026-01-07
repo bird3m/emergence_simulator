@@ -209,8 +209,6 @@ public class controlFlow : MonoBehaviour
         CalculateAndDisplayTraitStats(sb, allOrganisms, "Metabolic Rate", t => t.metabolic_rate);
         CalculateAndDisplayTraitStats(sb, allOrganisms, "Agression", t => t.agression);
         CalculateAndDisplayTraitStats(sb, allOrganisms, "Risk Aversion", t => t.risk_aversion);
-        CalculateAndDisplayTraitStats(sb, allOrganisms, "Upper Slope Heuristic", t => t.upperSlopeHeuristic);
-        CalculateAndDisplayTraitStats(sb, allOrganisms, "Lower Slope Heuristic", t => t.lowerSlopeHeuristic);
         CalculateAndDisplayTraitStats(sb, allOrganisms, "Danger Weight", t => t.danger_weight);
 
         // Emergence statistics
