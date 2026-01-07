@@ -192,7 +192,7 @@ public class PathfindingAstar : MonoBehaviour
         public void Push(T item)
         {
             data.Add(item);
-            SiftUp(data.Count - 1);
+            BubbleUp(data.Count - 1);
         }
 
         // Time: O(log n) because sifting down through heap levels, Space: O(1)
@@ -206,7 +206,7 @@ public class PathfindingAstar : MonoBehaviour
             data.RemoveAt(last);
 
             if (data.Count > 0)
-                SiftDown(0);
+                BubbleDown(0);
         }
 
         // Time: O(log n) because calling Pop, Space: O(1)
@@ -218,7 +218,7 @@ public class PathfindingAstar : MonoBehaviour
         }
 
         // Time: O(log n) because traversing height of tree, Space: O(1)
-        private void SiftUp(int i)
+        private void BubbleUp(int i)
         {
             while (i > 0)
             {
@@ -233,7 +233,7 @@ public class PathfindingAstar : MonoBehaviour
         }
 
         // Time: O(log n) because traversing height of tree, Space: O(1)
-        private void SiftDown(int i)
+        private void BubbleDown(int i)
         {
             int heapSize = data.Count;
 
