@@ -4,27 +4,29 @@ using UnityEngine;
 using TMPro;
 
 
-/* Simple GA that evolves Traits.chromosm (9 genes) and reads fitness directly from Traits.Fitness01().
-** No extra Stats script needed.
+/* Simple GA that evolves Chromosm of 6 genes 
+** Objective function is health of the individuals. There is no other penalty for anything
+, so we can say fitness = object. That way we can maximize individuals that is most efficient.
+** Individuals spend least energy, got most energy and not consumed by other individuals.
+** Random Mutation + BLX-α Crossover.
+** Elitism + Tournament Selection.
+/**
 */
 public class GeneticAlgorithm : MonoBehaviour
 {
-    [Header("Prefab")]
+    //Organism object
     public GameObject organismPrefab;
     
-    [Header("Spawn")]
+    //Positions of spawning points
     public Transform[] spawnPoints;
 
-    [Header("GA Settings")]
+    //Genetic algoritm parameters. Population size can be adjusted for each run. Other parameters are fixed
     public int populationSize = 15;
     public int eliteCount = 6;
     public float crossoverRate = 0.90f;
     public float mutationRate = 0.08f;
     public float mutationStep = 0.5f;
     
-    [Header("Emergence Bonuses")]
-    public float flyingFitnessBonus = 0.15f;
-    public float carnivoreBonus = 0.10f;
 
     [Header("Evaluation")]
     public float evaluationSeconds = 20f;
