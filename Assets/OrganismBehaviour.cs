@@ -237,7 +237,7 @@ public class OrganismBehaviour : MonoBehaviour
                 }
 
                 // fallback to sources if no prey or not carnivore
-                // If carnivore: do NOT fallback to sources they only eat prey.
+                //Carnivores only eat prey.
                 if (currentTarget == null && (traits == null || !traits.is_carnivore))
                     currentTarget = FindClosestSourceInRange();
                 
@@ -276,7 +276,7 @@ public class OrganismBehaviour : MonoBehaviour
             }
             else
             {
-                // 2) Repath occasionally, and only if target moved enough
+            
                 if (nowTime >= nextRepathTime)
                 {
                     nextRepathTime = nowTime + repathInterval + UnityEngine.Random.Range(0f, thinkJitter);
