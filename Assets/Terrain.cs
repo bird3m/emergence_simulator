@@ -209,7 +209,7 @@ public class Terrain : MonoBehaviour
     }
 
 
-    // ---- Gizmo helpers ----
+    //Gizmo
 
     private void DrawCellOutline(Vector3 center, float size)
     {
