@@ -2,6 +2,7 @@ using UnityEngine;
 using System;
 using System.Collections.Generic;
 
+//Class whşch controls the behaviour of an organism.
 public class OrganismBehaviour : MonoBehaviour
 {
    
@@ -10,7 +11,6 @@ public class OrganismBehaviour : MonoBehaviour
     public float speed = 0.0f;
     public float wanderRadius = 8f;
 
-  [Header("Energy vs Slope")]
     public float uphillExtra = 1.5f;        
     public float downhillDiscount = 0.5f;  
     public float maxAbsSlopeForNorm = 1.0f; 
@@ -27,7 +27,7 @@ public class OrganismBehaviour : MonoBehaviour
     private static Dictionary<string, PathfindingAstar.GraphNode> nodeByName;
     private static bool graphBuilt = false;
 
-    [HideInInspector] // Unity Inspector'ın bu listeyi okumaya çalışmasını engeller
+    [HideInInspector] 
     public List<PathfindingAstar.GraphNode> lastPath = new List<PathfindingAstar.GraphNode>();
 
 
@@ -39,26 +39,19 @@ public class OrganismBehaviour : MonoBehaviour
     private Vector2 lastPlannedTargetPos;
     public Traits traits;
     private Vector2 lastPos;
-    [Header("Sprite (fly)")]
+  
     public Sprite flyingSprite;
-    [Header("Sprite (carnivore)")]
+   
     public Sprite carnivoreSprite;
     private Sprite originalSprite;
     private bool prevCanFly = false;
     private bool prevIsCarnivore = false;
 
 
-    [Header("Debug")]
-    public bool debugCosts = false;
-    public float debugLogChance = 0.02f; // %2 of frames
-
-    private PathfindingAstar.GraphNode lastCellNode = null;
-    private float accumulatedRealEffort = 0f;
-
-    [Header("AI Tick (Performance)")]
-    public float repathInterval = 0.35f;      // 0.25 - 0.75 iyi
-    public float targetSearchInterval = 0.35f; // source arama aralığı
-    public float thinkJitter = 0.15f;          // canlılar aynı frame düşünmesin
+    
+    public float repathInterval = 0.35f;      
+    public float targetSearchInterval = 0.35f; 
+    public float thinkJitter = 0.15f; //so organisms dont fell into the same frame. 
 
     private float nextRepathTime = 0f;
     private float nextSearchTime = 0f;
@@ -67,12 +60,12 @@ public class OrganismBehaviour : MonoBehaviour
     private List<OrganismBehaviour> nearbyCarnivores = new List<OrganismBehaviour>();
     private float carnivoreCheckRadius = 20f; // Only check carnivores within this radius
     
-    [Header("Cautious Pathing")]
-    [Tooltip("Enable prey avoidance of carnivores (performance cost)")]
+    
+    //Enable prey avoidance of carnivores (performance cost)
     public bool enableCautiousPathing = false;
     
-    [Header("Debug Seed")]
-    [Tooltip("If true, randomly mark some organisms as carnivores at Start for testing")]
+    
+    //If true, randomly mark some organisms as carnivores at Start for testing
     public bool seedInitialCarnivores = false;
     [Range(0f,1f)] public float initialCarnivoreFraction = 0.01f; // 2% carnivores at start
     public float fly_advantage;
@@ -80,6 +73,9 @@ public class OrganismBehaviour : MonoBehaviour
 
 
 
+    // Time: O(w * h) because building graph with w*h nodes
+    // Space: O(w * h) because storing all nodes
+    // Initializes organism, builds shared graph, sets initial state
     private void Start()
     {
         lastPos = transform.position;
@@ -99,8 +95,6 @@ public class OrganismBehaviour : MonoBehaviour
         }
 
         SetRandomWanderTarget();
-        lastCellNode = NodeFromWorld((Vector2)transform.position);
-        accumulatedRealEffort = 0f;
 
         // traits cache (sende public ama null kalabiliyor)
         if (traits == null)
@@ -136,9 +130,7 @@ public class OrganismBehaviour : MonoBehaviour
                 }
             }
             catch (Exception)
-            {
-                // ignore
-            }
+            {}
         }
 
             // cache original sprite and initialize sprite state (carnivore has priority)
@@ -149,7 +141,7 @@ public class OrganismBehaviour : MonoBehaviour
                 prevCanFly = (traits != null && traits.can_fly);
                 prevIsCarnivore = (traits != null && traits.is_carnivore);
 
-                // priority: carnivore sprite -> flying sprite -> original
+                
                 if (prevIsCarnivore && carnivoreSprite != null)
                     sr.sprite = carnivoreSprite;
                 else if (prevCanFly && flyingSprite != null)
@@ -169,6 +161,9 @@ public class OrganismBehaviour : MonoBehaviour
         try { GeneticAlgorithm.RegisterOrganism(this); } catch (Exception) { }
     }
 
+    // Time: O(n) 
+    // Space: O(1)
+    // Unregisters organism from central registry when destroyed
     private void OnDestroy()
     {
         // Unregister from central registry when destroyed
@@ -176,6 +171,9 @@ public class OrganismBehaviour : MonoBehaviour
     }
 
 
+    // Time: O(w * h) w is width h is height of the terrain.
+    // Space: O(w * h) because we are storing all nodes and connections
+    // Builds pathfinding graph from terrain grid with 4-neighborhood connections
     private void BuildSharedGraph()
     {
         allNodes = new List<PathfindingAstar.GraphNode>(terrain.width * terrain.height);
@@ -210,21 +208,23 @@ public class OrganismBehaviour : MonoBehaviour
     }
 
 
+    // Time: O(n) 
+    // Space: O(1) 
+    // Main game loop handling target acquisition, pathfinding, movement, and vitals
     private void Update()
     {
 
+        if (!enabled) 
+            return;
 
-        if (!enabled) return;
-        if (allNodes == null || allNodes.Count == 0) return;
+        if (allNodes == null || allNodes.Count == 0) 
+            return;
 
         Vector2 beforeMove = transform.position;
 
-        // -------------------------
-        // THINK (only sometimes)
-        // -------------------------
         float nowTime = Time.time;
 
-        // 1) Acquire target occasionally (NOT every frame)
+        //acquire target 
         if (currentTarget == null)
         {
             if (nowTime >= nextSearchTime)
@@ -238,11 +238,11 @@ public class OrganismBehaviour : MonoBehaviour
                 }
 
                 // fallback to sources if no prey or not carnivore
-                // If carnivore: do NOT fallback to sources (only prey)
+                // If carnivore: do NOT fallback to sources they only eat prey.
                 if (currentTarget == null && (traits == null || !traits.is_carnivore))
                     currentTarget = FindClosestSourceInRange();
                 
-                // Cautious pathing emergence: skip targets too close to carnivores
+                //skip targets too close to carnivores
                 if (currentTarget != null && traits != null && traits.can_cautiousPathing)
                 {
                     if (IsTargetNearCarnivore(currentTarget.transform.position))
@@ -296,20 +296,16 @@ public class OrganismBehaviour : MonoBehaviour
             }
         }
 
-        // -------------------------
-        // ACT (every frame)
-        // -------------------------
         if (currentTarget == null)
             Wander();
 
         FollowPath();
 
-        // If reached end and have target: consume + clear
         if (pathIndex == pathPoints.Count && currentTarget != null)
         {
             bool shouldDestroy = true;
             
-            // If target is an organism and we're carnivore, convert it to carcass/resource first
+            // If target is an organism and we arre carnivore, convert it to carcass/resource first so we can eat
             var targetTraits = currentTarget.GetComponent<Traits>();
             if (targetTraits != null && traits != null && traits.is_carnivore)
             {
@@ -320,12 +316,10 @@ public class OrganismBehaviour : MonoBehaviour
                     targetTraits.hasBecomeCarcass = true;
                     targetTraits.DieIntoResource();
 
-                    shouldDestroy = false; // Don't destroy, let it become a carcass that can be eaten by scavengers
+                    shouldDestroy = false; //let it become a carcass that can be eaten by scavengers
                 }
                 catch (Exception)
-                {
-                    // ignore
-                }
+                {}
             }
 
             var res = currentTarget.GetComponent<resource>();
@@ -345,25 +339,19 @@ public class OrganismBehaviour : MonoBehaviour
             pathIndex = 0;
         }
 
-        // -------------------------
-        // VITALS (every frame)
-        // -------------------------
+       
         float movedDistance = Vector2.Distance((Vector2)transform.position, beforeMove);
         
-        // Track total movement distance for fitness (hareket baskısı)
-        if (traits != null)
-            traits.totalMovementDistance += movedDistance;
 
         float mult = 1f;
 
         // Flying has energy cost but cheaper than walking
         if (traits != null && traits.can_fly)
         {
-            mult = 0.5f; // Flying costs 50% of walking (balanced)
+            mult = 0.5f; // Flying costs less than going on foot.
         }
         else
         {
-            // Slope hesaplaması devre dışı - sabit enerji maliyeti
             mult = 1f;
         }
 
@@ -372,7 +360,7 @@ public class OrganismBehaviour : MonoBehaviour
         if (traits != null)
             traits.UpdateVitals(effort, Time.deltaTime);
 
-        // Check for can_fly / is_carnivore state changes and swap sprite accordingly
+        // Check for can_fly and is_carnivore state changes so we can swap the sprites accordingly
         if (traits != null)
         {
             bool nowCanFly = traits.can_fly;
@@ -383,7 +371,6 @@ public class OrganismBehaviour : MonoBehaviour
                 var sr2 = GetComponent<SpriteRenderer>();
                 if (sr2 != null)
                 {
-                    // priority: carnivore -> flying -> original
                     if (nowIsCarnivore && carnivoreSprite != null)
                     {
                         sr2.sprite = carnivoreSprite;
@@ -406,6 +393,9 @@ public class OrganismBehaviour : MonoBehaviour
 
 
 
+    // Time: O(1), we are using dictionary lookup 
+    // Space: O(1) 
+    // Adds graph edge between adjacent terrain cells if valid
     private void AddLinkIfValid(PathfindingAstar.GraphNode node, int targetX, int targetY)
     {
         if (targetX < 0 || targetX >= terrain.width || targetY < 0 || targetY >= terrain.height)
@@ -420,8 +410,10 @@ public class OrganismBehaviour : MonoBehaviour
         }
     }
 
-    // ---------------- PATHFINDING ----------------
 
+    // Time: O((V + E) * log V) because A* with heap operations
+    // Space: O(V) because storing path and open/closed sets
+    // Calculates shortest path from current position to destination using A* algorithm
     private void CalculateAStarPath(Vector2 destination)
     {
         pathPoints.Clear();
@@ -437,18 +429,22 @@ public class OrganismBehaviour : MonoBehaviour
             startNode, 
             goalNode, 
             (n) => HeuristicForNode(n, destination),
-            (from, to) => PerceivedStepCost(to) // G maliyeti için alt metodu çağırır
+            (from, to) => PerceivedStepCost(to) 
         );
 
         if (result.found && result.path != null)
         {
             lastPath.Clear();
             lastPath.AddRange(result.path);
-            foreach (var node in result.path) pathPoints.Add(GetNodePosition(node));
+            foreach (var node in result.path) 
+                pathPoints.Add(GetNodePosition(node));
         }
     }
 
 
+    // Time: O(1) because dictionary lookup
+    // Space: O(1)
+    // Converts world position to graph node using dictionary lookup
     private PathfindingAstar.GraphNode GetNodeAtWorld(Vector2 world)
     {
         if (!terrain.WorldToCell(world, out int x, out int y))
@@ -464,6 +460,9 @@ public class OrganismBehaviour : MonoBehaviour
     }
 
 
+   // Time: O(1) 
+   // Space: O(1)
+   // Moves organism along calculated path and handles target consumption
    private void FollowPath()
     {
         if (pathPoints.Count == 0 || pathIndex >= pathPoints.Count)
@@ -472,7 +471,7 @@ public class OrganismBehaviour : MonoBehaviour
         Vector2 target = pathPoints[pathIndex];
         transform.position = Vector2.MoveTowards(transform.position, target, speed * Time.deltaTime);
         
-        // Map sınırları içinde tut
+ 
         ClampPositionToMap();
 
         if (Vector2.Distance(transform.position, target) < reachTolerance)
@@ -498,15 +497,19 @@ public class OrganismBehaviour : MonoBehaviour
         }
     }
 
+    // Time: O(1) 
+    // Space: O(1)
+    // Keeps organism position within terrain boundaries with padding
     private void ClampPositionToMap()
     {
-        if (terrain == null) return;
+        if (terrain == null) 
+            return;
         
-        // Map sınırlarını hesapla (terrain grid'inin dünya koordinatlarındaki konumu)
+      
         Vector3 minCorner = terrain.CellCenterWorld(0, 0);
         Vector3 maxCorner = terrain.CellCenterWorld(terrain.width - 1, terrain.height - 1);
         
-        // Cell size kadar padding ekle (kenarlardan içerde tut)
+      
         float padding = terrain.cellSize * 0.5f;
         
         Vector3 pos = transform.position;
@@ -516,8 +519,10 @@ public class OrganismBehaviour : MonoBehaviour
     }
 
 
-    // ---------------- HELPERS ----------------
-
+    //Helper functions 
+    // Time: O(1) 
+    // Space: O(1)
+    // Returns slope value of terrain cell at current position
     private float CurrentCellSlope()
     {
         if (!terrain.WorldToCell((Vector2)transform.position, out int x, out int y))
@@ -525,6 +530,8 @@ public class OrganismBehaviour : MonoBehaviour
 
         return terrain.GetSlope(x, y);
     }
+    // Time: O(1) because of dictionary lookup
+    // Space: O(1)
     private PathfindingAstar.GraphNode NodeFromWorld(Vector2 world)
     {
         if (!terrain.WorldToCell(world, out int x, out int y))
@@ -535,6 +542,8 @@ public class OrganismBehaviour : MonoBehaviour
         return node;
     }
 
+    // Time: O(n) because we are checking all nodes
+    // Space: O(1)
     private PathfindingAstar.GraphNode FindClosestNode(Vector2 pos)
     {
         PathfindingAstar.GraphNode closest = null;
@@ -555,12 +564,16 @@ public class OrganismBehaviour : MonoBehaviour
         return closest;
     }
 
+    // Time: O(1) 
+    // Space: O(1)
     public Vector3 GetNodeWorldPosition(int x, int y)
     {
         return terrain.CellCenterWorld(x, y);
     }
 
 
+    // Time: O(1) 
+    // Space: O(1)
     private Vector2 GetNodePosition(PathfindingAstar.GraphNode node)
     {
         string[] p = node.name.Split(',');
@@ -571,6 +584,9 @@ public class OrganismBehaviour : MonoBehaviour
         return new Vector2(worldPos.x, worldPos.y);
     }
 
+    // Time: O(n) because we are checking all sources
+    // Space: O(n) because we are creating sources array
+    // Finds closest food source within detection range
     private GameObject FindClosestSourceInRange()
     {
         GameObject[] sources = SourceManager.I.sources.ConvertAll(r => r.gameObject).ToArray();
@@ -594,6 +610,9 @@ public class OrganismBehaviour : MonoBehaviour
     }
     
 
+    // Time: O(n) because checking all organisms
+    // Space: O(1)
+    // Finds closest prey organism for carnivores within detection range
     private GameObject FindClosestPreyInRange()
     {
         var organisms = GeneticAlgorithm.Organisms;
@@ -611,12 +630,9 @@ public class OrganismBehaviour : MonoBehaviour
             if (ob.traits.IsDead()) continue;
             if (ob.traits.hasBecomeCarcass) continue;
             
-            // CARNIVORE CHECK: Carnivores cannot eat other carnivores
-            // Carnivore'lar birbirini yiyemez - sadece non-carnivore'ları avlayabilirler
+            //Carnivores cannot eat other carnivores
             if (ob.traits.is_carnivore)
                 continue; // Skip carnivore prey
-            
-            // MASS CHECK removed - fitness bonus for non-carnivores will balance instead
 
             float d = Vector2.Distance(transform.position, ob.transform.position);
             if (d < minDist)
@@ -632,6 +648,9 @@ public class OrganismBehaviour : MonoBehaviour
 
     
 
+    // Time: O(1) 
+    // Space: O(1)
+    // Calculates A* heuristic cost estimate from node to destination
     private uint HeuristicForNode(PathfindingAstar.GraphNode n, Vector2 destination)
     {
         ParseNodeXY(n, out int nx, out int ny);
@@ -645,32 +664,29 @@ public class OrganismBehaviour : MonoBehaviour
             float hFly = dist * fly_advantage;
             hFly = Mathf.Clamp(hFly, 1f, 100000f);
 
-            if (debugCosts && UnityEngine.Random.value < debugLogChance)
-                //Debug.Log(gameObject.name + ": Heuristic - flying branch at node " + n.name + ", dist=" + dist.ToString("F2") + ", h=" + hFly.ToString("F2"));
-
             return (uint)Mathf.RoundToInt(hFly);
         }
 
-        // Slope hesaplaması devre dışı - düz mesafe kullan
-        // Base heuristic: Manhattan-like distance in cost units
+        //Manhattan distance in cost units
         float baseH = dist * 10f;
 
-        // Slope influence devre dışı
         float h = baseH;
 
         return (uint)Mathf.Clamp(h, 1f, 100000f);
     }
 
 
+    // Time: O(1)  
+    // Space: O(1)
+    // Sets random wander destination within radius and map bounds
     private void SetRandomWanderTarget()
     {
         pathPoints.Clear();
 
-        // Map sınırları içinde random pozisyon seç
+    
         Vector2 currentPos = transform.position;
         Vector2 randomPoint = currentPos + UnityEngine.Random.insideUnitCircle * wanderRadius;
         
-        // Wander target'ı da map içinde tut
         if (terrain != null)
         {
             Vector3 minCorner = terrain.CellCenterWorld(0, 0);
@@ -686,6 +702,9 @@ public class OrganismBehaviour : MonoBehaviour
         pathIndex = 0;
     }
 
+    // Time: O(1) 
+    // Space: O(1)
+    // Initiates wandering behavior when path is complete or empty
     private void Wander()
     {
         if (pathPoints.Count == 0 || pathIndex >= pathPoints.Count)
@@ -694,22 +713,28 @@ public class OrganismBehaviour : MonoBehaviour
         }
     }
 
+    // Time: O(n) because we are checking all organisms
+    // Space: O(1)
+    // Checks if target position is too close to any carnivore for cautious pathing
     private bool IsTargetNearCarnivore(Vector2 targetPos)
     {
-        var regs = GeneticAlgorithm.Organisms;
-        if (regs == null) return false;
+        List<OrganismBehaviour> allOrganisms = GeneticAlgorithm.Organisms;
+        if (allOrganisms == null) 
+            return false;
         
-        float avoidDist = border * 1.5f; // Stay away from targets near carnivores
-        float avoidDistSq = avoidDist * avoidDist;
+        float avoidanceDistance = border * 1.5f; // Stay away from targets near carnivores
+        float avoidanceDistanceSquared = avoidanceDistance * avoidanceDistance;
         
-        for (int i = 0; i < regs.Count; i++)
+        for (int i = 0; i < allOrganisms.Count; i++)
         {
-            var ob = regs[i];
-            if (ob == null || ob == this) continue;
-            if (ob.traits == null || !ob.traits.is_carnivore) continue;
+            var organism = allOrganisms[i];
+            if (organism == null || organism == this) 
+                continue;
+            if (organism.traits == null || !organism.traits.is_carnivore) 
+                continue;
             
-            float distSq = (targetPos - (Vector2)ob.transform.position).sqrMagnitude;
-            if (distSq < avoidDistSq)
+            float distanceSquared = (targetPos - (Vector2)organism.transform.position).sqrMagnitude;
+            if (distanceSquared < avoidanceDistanceSquared)
             {
                 return true; // Target is too close to a carnivore
             }
@@ -718,8 +743,10 @@ public class OrganismBehaviour : MonoBehaviour
         return false;
     }
 
-    //---Slop Calculation
 
+    // Time: O(1) 
+    // Space: O(1)
+    // Extracts x and y coordinates from node name string
     private void ParseNodeXY(PathfindingAstar.GraphNode node, out int x, out int y)
     {
         string name = node.name;
@@ -728,28 +755,19 @@ public class OrganismBehaviour : MonoBehaviour
         y = int.Parse(name.Substring(comma + 1));
     }
 
+    // Time: O(1) 
+    // Space: O(1)
+    // Normalizes absolute slope value to 0-1 range
     private float NormalizedAbsSlope(float s)
     {
         // s is in [-maxAbsSlope, +maxAbsSlope]
         return Mathf.Clamp01(Mathf.Abs(s) / Mathf.Max(terrain.maxAbsSlope, 1e-4f));
     }
 
-    /// <summary>
-    /// Returns signed bias multiplier from traits depending on slope sign.
-    /// DISABLED: Heuristic genes have no effect.
-    /// </summary>
-    private float SlopeBiasFactor(float slope)
-    {
-        // Heuristic effect disabled - always return 0
-        return 0f;
-    }
 
-    /// <summary>
-    /// Perceived step cost in "A* units".
-    /// This is the REAL physical cost - no genetic bias here.
-    /// The organism will pay this cost regardless of preferences.
-    /// Must return >= 1 so cost is never zero.
-    /// </summary>
+    // Time: O(n) because checking all carnivores for cautious pathing
+    // Space: O(1)
+    // Calculates movement cost for A* considering flying and carnivore avoidance
     private uint PerceivedStepCost(PathfindingAstar.GraphNode toNode)
     {
         ParseNodeXY(toNode, out int toX, out int toY);
@@ -757,28 +775,24 @@ public class OrganismBehaviour : MonoBehaviour
         // If organism can fly, ignore slope and use lower cost
         if (traits != null && traits.can_fly)
         {
-            if (debugCosts && UnityEngine.Random.value < debugLogChance)
-                //Debug.Log(gameObject.name + ": PerceivedStepCost - flying at cell " + toX + "," + toY + " -> cost=7");
-
-            return 7u; // Flying costs 70% of base cost - still advantageous but not OP
+            return 7u; 
         }
 
-        // Temel yol maliyeti - slope hesaplamaları devre dışı
+
         float baseStep = 10f; 
 
-        // Slope multiplier devre dışı - sabit maliyet
         float slopeMultiplier = 1.0f;
         
-        // CAUTIOUS PATHING: Always cheaper pathfinding + carnivores treated as obstacles
+        //Carnivores are treated as obstacles
         float cautiousCostMultiplier = 1.0f;
         float carnivoreAvoidanceCost = 0f;
         
         if (traits != null && traits.can_cautiousPathing)
         {
-            // BASE BONUS: Cautious organisms use 70% less energy for pathfinding (ULTRA OP)
+            //Cautious organisms use 70% less energy for pathfinding
             cautiousCostMultiplier = 0.3f;
             
-            // CARNIVORE AVOIDANCE: Treat carnivores as obstacles (HIGH cost near them)
+            //higher cost near carnivores
             Vector2 cellPos = GetNodePosition(toNode);
             float minCarnivoreDistSq = float.MaxValue;
             
@@ -798,51 +812,17 @@ public class OrganismBehaviour : MonoBehaviour
             float dangerRadius = border * 2.5f; // Larger avoidance radius
             if (minCarnivoreDistSq < dangerRadius * dangerRadius)
             {
-                // Near carnivore - add HIGH cost to avoid this cell (treat as obstacle)
+                //calculates the ditance from the carnivore
                 float distFromDanger = Mathf.Sqrt(minCarnivoreDistSq);
                 float dangerFactor = 1.0f - Mathf.Clamp01(distFromDanger / dangerRadius);
                 
                 // Very high cost multiplier near carnivores (forces path to go around)
-                carnivoreAvoidanceCost = baseStep * dangerFactor * 5.0f; // 5x base cost at carnivore location
+                carnivoreAvoidanceCost = baseStep * dangerFactor * 5.0f; 
             }
         }
         
         float totalPerceived = (baseStep * slopeMultiplier * cautiousCostMultiplier) + carnivoreAvoidanceCost;
 
         return (uint)Mathf.Clamp(totalPerceived, 1f, 100000f);
-    }
-
-    private void DebugPathCosts()
-    {
-        if (!debugCosts) return;
-        if (lastPath == null || lastPath.Count < 2) return;
-
-        // Random sampling - only log occasionally
-        if (UnityEngine.Random.value > debugLogChance) return;
-
-        uint totalRealCost = 0;
-        float totalPhysicalSlope = 0f;
-        int uphillSteps = 0;
-        int downhillSteps = 0;
-
-        for (int i = 0; i < lastPath.Count; i++)
-        {
-            ParseNodeXY(lastPath[i], out int x, out int y);
-            float slope = terrain.GetSlope(x, y);
-            totalPhysicalSlope += slope;
-
-            if (i > 0)
-            {
-                uint realCost = PerceivedStepCost(lastPath[i]);
-                totalRealCost += realCost;
-            }
-
-            if (slope > 0.05f) uphillSteps++;
-            else if (slope < -0.05f) downhillSteps++;
-        }
-
-        float avgSlope = totalPhysicalSlope / lastPath.Count;
-
-        // (debug logs removed)
     }
 }
