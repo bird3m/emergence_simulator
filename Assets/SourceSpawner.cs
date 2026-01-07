@@ -1,23 +1,22 @@
+//Manages spawning of resource objects in the terrain
 using UnityEngine;
 using System.Collections.Generic;
 
 public class SourceSpawner : MonoBehaviour
 {
-    [Header("Spawn Settings")]
+    
     public GameObject sourcePrefab;
     public global::Terrain terrain;
 
     public float respawnDelay = 8f;
     public int maxTries = 200;
 
-    [Header("Initial Spawn")]
+  
     public bool spawnOnStart = true;
     public int initialCount = 50;
     
-    [Header("Nutrition Settings")]
     public float nutrition = 10f;
 
-    [Header("Collision")]
     public LayerMask sourceLayerMask; // only sources
 
     private struct Pending
@@ -28,14 +27,18 @@ public class SourceSpawner : MonoBehaviour
 
     private readonly List<Pending> pending = new List<Pending>();
 
+  
+    // Initializes terrain reference if not assigned
     private void Awake()
     {
         if (terrain == null)
             terrain = FindObjectOfType<global::Terrain>();
 
-      
     }
 
+    // Time: O(n) because we are spawning n initial resources
+    // Space: O(1)
+    // Reads settings and spawns initial food resources
     private void Start()
     {
         // Read values from singleton if available
@@ -53,6 +56,9 @@ public class SourceSpawner : MonoBehaviour
         }
     }
 
+    // Time: O(p) because we are checking p pending respawns
+    // Space: O(1)
+    // Processes scheduled resource respawns
     private void Update()
     {
         if (pending.Count == 0) return;
@@ -69,6 +75,9 @@ public class SourceSpawner : MonoBehaviour
         }
     }
 
+    // Time: O(1) 
+    // Space: O(1)
+    // Schedules a resource to respawn after delay
     public void ScheduleRespawn(float nutrition)
     {
         Pending p;
@@ -77,6 +86,9 @@ public class SourceSpawner : MonoBehaviour
         pending.Add(p);
     }
 
+    // Time: O(1) 
+    // Space: O(1)
+    // Spawns one resource at random valid location
     private void SpawnOne(float nutrition)
     {
         if (sourcePrefab == null || terrain == null) 
@@ -97,6 +109,9 @@ public class SourceSpawner : MonoBehaviour
 
     }
 
+    // Time: O(n) , n is maxTries
+    // Space: O(1)
+    // Finds random empty cell position without colliding the resources
     private bool TryGetRandomCellCenter(out Vector3 worldPos)
     {
         worldPos = Vector3.zero;
@@ -124,9 +139,11 @@ public class SourceSpawner : MonoBehaviour
         return false;
     }
     
+    // Time: O(n) because we are destroying n existing resources
+    // Space: O(n) because FindObjectsOfType creates array
     public void ResetAllResources()
     {
-        // Clear pending respawns
+    
         pending.Clear();
         
         // Destroy all existing resources
@@ -148,12 +165,15 @@ public class SourceSpawner : MonoBehaviour
         Debug.Log($"Resources reset: {initialCount} new resources spawned");
     }
     
-    // UI Slider metodları
+    // Time: O(1) 
+    // Space: O(1)
     public void SetResourceCount(float value)
     {
         initialCount = Mathf.RoundToInt(value);
     }
     
+    // Time: O(1) 
+    // Space: O(1)
     public void SetNutrition(float value)
     {
         nutrition = value;

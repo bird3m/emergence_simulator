@@ -1,5 +1,6 @@
 using UnityEngine;
 
+// Represents a food source that organisms can eat to gain energy.
 public class resource : MonoBehaviour
 {
     public float nutrition = 40f;
@@ -10,14 +11,13 @@ public class resource : MonoBehaviour
     {
         if(isOrganism)
         {
-            // Get organism nutrition from stats_for_simulation
             if (stats_for_simulation.Instance != null)
             {
                 nutrition = stats_for_simulation.Instance.organismNutrition;
             }
             else
             {
-                nutrition = organismNutrition; // Fallback to field value
+                nutrition = organismNutrition; 
             }
         }
 
