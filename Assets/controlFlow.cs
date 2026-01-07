@@ -1,3 +1,9 @@
+/*
+* This script is entirely for displaying data and stats. It is this long and hard to understand
+* just because unity is not built for displaying data.
+*/
+
+
 using UnityEngine;
 using TMPro;
 using UnityEngine.InputSystem;
@@ -53,56 +59,56 @@ public class controlFlow : MonoBehaviour
         var keyboard = Keyboard.current;
         if (keyboard == null) return;
 
-        // U tuşuna basılırsa istatistik panelini aç/kapat
+        // Stats panel when U pressed
         if (keyboard.uKey.wasPressedThisFrame)
         {
             ToggleStatisticsPanel();
         }
         
-        // I tuşuna basılırsa trait grafik panelini aç/kapat
+        // Stats panel when I pressed
         if (keyboard.iKey.wasPressedThisFrame)
         {
             ToggleTraitGraphPanel();
         }
         
-        // O tuşuna basılırsa emergence grafik panelini aç/kapat
+        // Stats panel when O pressed
         if (keyboard.oKey.wasPressedThisFrame)
         {
             ToggleEmergenceGraphPanel();
         }
 
-        // 0'a basılırsa zamanı durdur
+        // Stop time if 0 is pressed
         if (keyboard.digit0Key.wasPressedThisFrame || keyboard.numpad0Key.wasPressedThisFrame)
         {
             Time.timeScale = 0f;
             Debug.Log("Time paused (timeScale = 0)");
         }
-        // 1'e basılırsa normal hız
+        // Normal speed if 1 is pressed
         else if (keyboard.digit1Key.wasPressedThisFrame || keyboard.numpad1Key.wasPressedThisFrame)
         {
             Time.timeScale = 1f;
             Debug.Log("Time speed: 1x");
         }
-        // 2'ye basılırsa 5x hız
+        //  5X speed if 1 is pressed
         else if (keyboard.digit2Key.wasPressedThisFrame || keyboard.numpad2Key.wasPressedThisFrame)
         {
             Time.timeScale = 5f;
             Debug.Log("Time speed: 5x");
         }
-        // 3'e basılırsa 25x hız
+        //  25X speed if 3 is pressed
         else if (keyboard.digit3Key.wasPressedThisFrame || keyboard.numpad3Key.wasPressedThisFrame)
         {
             Time.timeScale = 25f;
             Debug.Log("Time speed: 25x");
         }
-        // 4'e basılırsa 50x hız
+        //  50X speed if 3 is pressed
         else if (keyboard.digit4Key.wasPressedThisFrame || keyboard.numpad4Key.wasPressedThisFrame)
         {
             Time.timeScale = 50f;
             Debug.Log("Time speed: 50x");
         }
         
-        // Panel açıkken sürekli güncelle
+        //Update panel the time if any of panels are visible
         if (isPanelVisible && statisticsText != null)
         {
             UpdateStatisticsText();
@@ -128,7 +134,7 @@ public class controlFlow : MonoBehaviour
 
     void CreateStatisticsUI()
     {
-        // Canvas oluştur
+        // Create canvas
         GameObject canvasGO = GameObject.Find("StatisticsCanvas");
         if (canvasGO == null)
         {
@@ -140,7 +146,7 @@ public class controlFlow : MonoBehaviour
             canvasGO.AddComponent<UnityEngine.UI.GraphicRaycaster>();
         }
 
-        // Panel oluştur
+        // Create Panel
         statisticsPanel = new GameObject("StatisticsPanel");
         statisticsPanel.transform.SetParent(canvasGO.transform, false);
         
@@ -153,7 +159,7 @@ public class controlFlow : MonoBehaviour
         panelRect.sizeDelta = new Vector2(800f, 600f);
         panelRect.anchoredPosition = Vector2.zero;
 
-        // Text oluştur
+        // Create text
         GameObject textGO = new GameObject("StatisticsText");
         textGO.transform.SetParent(statisticsPanel.transform, false);
         

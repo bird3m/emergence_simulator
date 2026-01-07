@@ -1,3 +1,5 @@
+// This script enable users to adjust starting parameters of the simulation
+
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;

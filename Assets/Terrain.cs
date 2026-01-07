@@ -1,3 +1,8 @@
+/*
+    This creates a background. nothing else
+*/
+
+
 using UnityEngine;
 
 public class Terrain : MonoBehaviour
