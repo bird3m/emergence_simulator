@@ -12,7 +12,6 @@ public class OrganismBehaviour : MonoBehaviour
 
     public float uphillExtra = 1.5f;        
     public float downhillDiscount = 0.5f;  
-    public float maxAbsSlopeForNorm = 1.0f; 
     public float minEnergyMultiplier = 0.1f; 
 
     public SourceSpawner spawner;
@@ -516,17 +515,6 @@ public class OrganismBehaviour : MonoBehaviour
     }
 
 
-    //Helper functions 
-    // Time: O(1) 
-    // Space: O(1)
-    // Returns slope value of terrain cell at current position
-    private float CurrentCellSlope()
-    {
-        if (!terrain.WorldToCell((Vector2)transform.position, out int x, out int y))
-            return 0f;
-
-        return terrain.GetSlope(x, y);
-    }
     // Time: O(1) because of dictionary lookup
     // Space: O(1)
     private PathfindingAstar.GraphNode NodeFromWorld(Vector2 world)
@@ -654,8 +642,6 @@ public class OrganismBehaviour : MonoBehaviour
         Vector2 np = GetNodePosition(n);
         float dist = Vector2.Distance(np, destination);
 
-
-        // If organism can fly, ignore slope in heuristic (use straight distance with lower cost)
         if (traits != null && traits.can_fly)
         {
             float hFly = dist * fly_advantage;
@@ -752,15 +738,6 @@ public class OrganismBehaviour : MonoBehaviour
         y = int.Parse(name.Substring(comma + 1));
     }
 
-    // Time: O(1) 
-    // Space: O(1)
-    // Normalizes absolute slope value to 0-1 range
-    private float NormalizedAbsSlope(float s)
-    {
-        // s is in [-maxAbsSlope, +maxAbsSlope]
-        return Mathf.Clamp01(Mathf.Abs(s) / Mathf.Max(terrain.maxAbsSlope, 1e-4f));
-    }
-
 
     // Time: O(n) because checking all carnivores for cautious pathing
     // Space: O(1)
@@ -769,7 +746,7 @@ public class OrganismBehaviour : MonoBehaviour
     {
         ParseNodeXY(toNode, out int toX, out int toY);
         
-        // If organism can fly, ignore slope and use lower cost
+        // If organism can fly, use lower cost
         if (traits != null && traits.can_fly)
         {
             return 7u; 
@@ -778,7 +755,6 @@ public class OrganismBehaviour : MonoBehaviour
 
         float baseStep = 10f; 
 
-        float slopeMultiplier = 1.0f;
         
         //Carnivores are treated as obstacles
         float cautiousCostMultiplier = 1.0f;
@@ -818,7 +794,7 @@ public class OrganismBehaviour : MonoBehaviour
             }
         }
         
-        float totalPerceived = (baseStep * slopeMultiplier * cautiousCostMultiplier) + carnivoreAvoidanceCost;
+        float totalPerceived = (baseStep * cautiousCostMultiplier) + carnivoreAvoidanceCost;
 
         return (uint)Mathf.Clamp(totalPerceived, 1f, 100000f);
     }
