@@ -15,6 +15,14 @@ public class stats_for_simulation : MonoBehaviour
     public const float MIN_RESOURCE_NUTRITION = 1f;
     public const float MAX_RESOURCE_NUTRITION = 50f;
 
+    public float organismNutrition = 10f;
+    public const float MIN_ORGANISM_NUTRITION = 1f;
+    public const float MAX_ORGANISM_NUTRITION = 50f;
+
+    public float flyAdvantage = 7f;
+    public const float MIN_FLY_ADVANTAGE = 5f;
+    public const float MAX_FLY_ADVANTAGE = 20f;
+
     [Header("Terrain Settings")]
     public int terrainSize = 50;
     public const int MIN_TERRAIN_SIZE = 10;
@@ -44,6 +52,12 @@ public class stats_for_simulation : MonoBehaviour
     
     public Slider populationSizeSlider;
     public TMP_Text populationSizeText;
+    
+    public Slider organismNutritionSlider;
+    public TMP_Text organismNutritionText;
+    
+    public Slider flyAdvantageSlider;
+    public TMP_Text flyAdvantageText;
 
     private void Awake()
     {
@@ -95,6 +109,18 @@ public class stats_for_simulation : MonoBehaviour
             populationSize = Mathf.RoundToInt(populationSizeSlider.value);
             UpdatePopulationSizeText(populationSize);
         }
+
+        if (organismNutritionSlider != null)
+        {
+            organismNutrition = organismNutritionSlider.value;
+            UpdateOrganismNutritionText(organismNutrition);
+        }
+
+        if (flyAdvantageSlider != null)
+        {
+            flyAdvantage = flyAdvantageSlider.value;
+            UpdateFlyAdvantageText(flyAdvantage);
+        }
     }
 
     // UI Slider Metodları
@@ -128,6 +154,18 @@ public class stats_for_simulation : MonoBehaviour
         UpdatePopulationSizeText(populationSize);
     }
 
+    public void SetOrganismNutrition(float value)
+    {
+        organismNutrition = Mathf.Clamp(value, MIN_ORGANISM_NUTRITION, MAX_ORGANISM_NUTRITION);
+        UpdateOrganismNutritionText(organismNutrition);
+    }
+
+    public void SetFlyAdvantage(float value)
+    {
+        flyAdvantage = Mathf.Clamp(value, MIN_FLY_ADVANTAGE, MAX_FLY_ADVANTAGE);
+        UpdateFlyAdvantageText(flyAdvantage);
+    }
+
     // Text güncelleme metodları
     private void UpdateResourceCountText(int value)
     {
@@ -157,5 +195,17 @@ public class stats_for_simulation : MonoBehaviour
     {
         if (populationSizeText != null)
             populationSizeText.text = value.ToString();
+    }
+
+    private void UpdateOrganismNutritionText(float value)
+    {
+        if (organismNutritionText != null)
+            organismNutritionText.text = value.ToString("F1");
+    }
+
+    private void UpdateFlyAdvantageText(float value)
+    {
+        if (flyAdvantageText != null)
+            flyAdvantageText.text = value.ToString("F1");
     }
 }

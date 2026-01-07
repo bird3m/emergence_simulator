@@ -193,23 +193,21 @@ public class Traits : MonoBehaviour
 
     public void EvaluateEmergences()
     {
-        // VERY LOWERED: Flying emergence thresholds very easy to achieve
-        can_fly = (EffectiveMass <= 0.80f) && (PowerToWeight >= 0.35f) && (metabolic_rate >= 0.30f);
-
-        // Increase effective aggression when resources per organism is low
-        float effectiveAggression = agression;
+        // Evaluate carnivore FIRST (needed for can_fly check)
+        float effectiveAggressionForCarnivore = agression;
         try
         {
             if (SourceManager.I != null)
             {
                 int resourceCount = SourceManager.I.sources.Count;
-                int orgCount = (GeneticAlgorithm.Organisms != null) ? GeneticAlgorithm.Organisms.Count : GameObject.FindObjectsOfType<OrganismBehaviour>().Length;
-                float ratio = (float)resourceCount / Mathf.Max(1, orgCount);
+                int orgCount = (GeneticAlgorithm.Organisms != null) ? GeneticAlgorithm.Organisms.Count : 1;
+                float resourceRatio = (float)resourceCount / Mathf.Max(1, orgCount);
 
-                if (ratio < scarcityThreshold)
+                if (resourceRatio < scarcityThreshold)
                 {
-                    float boost = ((scarcityThreshold - ratio) / scarcityThreshold) * maxAggressionBoost;
-                    effectiveAggression = Mathf.Clamp01(agression + boost);
+                    float scarcity = 1f - (resourceRatio / scarcityThreshold);
+                    float aggressionBoost = scarcity * maxAggressionBoost;
+                    effectiveAggressionForCarnivore = Mathf.Clamp01(agression + aggressionBoost);
                 }
             }
         }
@@ -219,7 +217,11 @@ public class Traits : MonoBehaviour
         }
 
         // VERY LOWERED: Carnivore emergence thresholds very easy to achieve
-        is_carnivore = (effectiveAggression >= 0.30f) && (PowerToWeight >= 0.30f) && (metabolic_rate >= 0.20f) && (risk_aversion <= 0.85f);
+        is_carnivore = (effectiveAggressionForCarnivore >= 0.30f) && (PowerToWeight >= 0.30f) && (metabolic_rate >= 0.20f) && (risk_aversion <= 0.85f);
+
+        // Flying requires high investment: low mass, high power, high metabolism
+        can_fly = (EffectiveMass <= 0.45f) && (PowerToWeight >= 0.65f) && (metabolic_rate >= 0.60f);
+
         // Adjust scavenging tendency if many carcasses exist
         float effectiveRiskAversion = risk_aversion;
         float effectiveDangerWeight = danger_weight;

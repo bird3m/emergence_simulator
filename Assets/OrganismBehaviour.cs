@@ -75,7 +75,7 @@ public class OrganismBehaviour : MonoBehaviour
     [Tooltip("If true, randomly mark some organisms as carnivores at Start for testing")]
     public bool seedInitialCarnivores = false;
     [Range(0f,1f)] public float initialCarnivoreFraction = 0.01f; // 2% carnivores at start
-
+    public float fly_advantage;
     
 
 
@@ -107,6 +107,16 @@ public class OrganismBehaviour : MonoBehaviour
             traits = GetComponent<Traits>();
 
         speed = traits.GetSpeed(traits.PowerToWeight);
+
+        // Set fly advantage from stats_for_simulation
+        if (stats_for_simulation.Instance != null)
+        {
+            fly_advantage = stats_for_simulation.Instance.flyAdvantage;
+        }
+        else
+        {
+            fly_advantage = 7f; // Default value
+        }
 
         // Reduce carnivore detection/interaction border so predators have smaller personal borders
         if (traits != null && traits.is_carnivore)
@@ -346,10 +356,10 @@ public class OrganismBehaviour : MonoBehaviour
 
         float mult = 1f;
 
-        // SUPER OP: Flying organisms have COMPLETE terrain immunity
+        // Flying has energy cost but cheaper than walking
         if (traits != null && traits.can_fly)
         {
-            mult = 0.1f; // Flying costs almost nothing (VERY OP)
+            mult = 0.5f; // Flying costs 50% of walking (balanced)
         }
         else
         {
@@ -606,10 +616,7 @@ public class OrganismBehaviour : MonoBehaviour
             if (ob.traits.is_carnivore)
                 continue; // Skip carnivore prey
             
-            // MASS CHECK: Carnivore can only hunt smaller organisms
-            // Büyük carnivore'lar daha fazla av bulur, küçük carnivore'lar daha az
-            if (traits != null && ob.traits.mass >= traits.mass)
-                continue; // Skip prey that is equal or larger mass
+            // MASS CHECK removed - fitness bonus for non-carnivores will balance instead
 
             float d = Vector2.Distance(transform.position, ob.transform.position);
             if (d < minDist)
@@ -635,7 +642,7 @@ public class OrganismBehaviour : MonoBehaviour
         // If organism can fly, ignore slope in heuristic (use straight distance with lower cost)
         if (traits != null && traits.can_fly)
         {
-            float hFly = dist * 5f;
+            float hFly = dist * fly_advantage;
             hFly = Mathf.Clamp(hFly, 1f, 100000f);
 
             if (debugCosts && UnityEngine.Random.value < debugLogChance)
@@ -747,13 +754,13 @@ public class OrganismBehaviour : MonoBehaviour
     {
         ParseNodeXY(toNode, out int toX, out int toY);
         
-        // If organism can fly, ignore slope and use much lower cost
+        // If organism can fly, ignore slope and use lower cost
         if (traits != null && traits.can_fly)
         {
             if (debugCosts && UnityEngine.Random.value < debugLogChance)
-                //Debug.Log(gameObject.name + ": PerceivedStepCost - flying at cell " + toX + "," + toY + " -> cost=5");
+                //Debug.Log(gameObject.name + ": PerceivedStepCost - flying at cell " + toX + "," + toY + " -> cost=7");
 
-            return 5u; // Flying costs half of base cost - much cheaper than walking
+            return 7u; // Flying costs 70% of base cost - still advantageous but not OP
         }
 
         // Temel yol maliyeti - slope hesaplamaları devre dışı

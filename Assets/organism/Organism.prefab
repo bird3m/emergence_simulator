@@ -343,6 +343,7 @@ MonoBehaviour:
   corpseNutrition: 30
   carcassExpireAfterGenerations: 2
   hasBecomeCarcass: 0
+  totalMovementDistance: 0
   flag: 0
 --- !u!114 &3788187831198522187
 MonoBehaviour:
@@ -514,7 +515,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0e4677839bd4a61488b62439241963f8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::resource
-  nutrition: 30
+  nutrition: 0
+  isOrganism: 1
 --- !u!58 &-1779852597295020743
 CircleCollider2D:
   m_ObjectHideFlags: 0
