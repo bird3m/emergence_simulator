@@ -476,9 +476,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CameraDragPan2D
   terrain: {fileID: 0}
-  panSpeed: 1
+  panSpeed: 5
   enableZoom: 1
-  zoomSpeed: 25
+  zoomSpeed: 75
   minZoom: 15
   maxZoom: 75
 --- !u!1 &568344364
