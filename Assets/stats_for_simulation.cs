@@ -24,6 +24,14 @@ public class stats_for_simulation : MonoBehaviour
     public const float MIN_FLY_ADVANTAGE = 5f;
     public const float MAX_FLY_ADVANTAGE = 20f;
 
+    public float carcassNutrition = 6f;
+    public const float MIN_CARCASS_NUTRITION = 1f;
+    public const float MAX_CARCASS_NUTRITION = 10f;
+
+    public float cautiousPathingAdvantage = 0.3f;
+    public const float MIN_CAUTIOUS_PATHING_ADVANTAGE = 0.1f;
+    public const float MAX_CAUTIOUS_PATHING_ADVANTAGE = 0.9f;
+
     public int terrainSize = 50;
     public const int MIN_TERRAIN_SIZE = 10;
     public const int MAX_TERRAIN_SIZE = 200;
@@ -56,6 +64,12 @@ public class stats_for_simulation : MonoBehaviour
     
     public Slider flyAdvantageSlider;
     public TMP_Text flyAdvantageText;
+
+    public Slider carcassNutritionSlider;
+    public TMP_Text carcassNutritionText;
+
+    public Slider cautiousPathingAdvantageSlider;
+    public TMP_Text cautiousPathingAdvantageText;
 
     private void Awake()
     {
@@ -119,6 +133,18 @@ public class stats_for_simulation : MonoBehaviour
             flyAdvantage = flyAdvantageSlider.value;
             UpdateFlyAdvantageText(flyAdvantage);
         }
+
+        if (carcassNutritionSlider != null)
+        {
+            carcassNutrition = carcassNutritionSlider.value;
+            UpdateCarcassNutritionText(carcassNutrition);
+        }
+
+        if (cautiousPathingAdvantageSlider != null)
+        {
+            cautiousPathingAdvantage = cautiousPathingAdvantageSlider.value;
+            UpdateCautiousPathingAdvantageText(cautiousPathingAdvantage);
+        }
     }
 
 
@@ -164,6 +190,18 @@ public class stats_for_simulation : MonoBehaviour
         UpdateFlyAdvantageText(flyAdvantage);
     }
 
+    public void SetCarcassNutrition(float value)
+    {
+        carcassNutrition = Mathf.Clamp(value, MIN_CARCASS_NUTRITION, MAX_CARCASS_NUTRITION);
+        UpdateCarcassNutritionText(carcassNutrition);
+    }
+
+    public void SetCautiousPathingAdvantage(float value)
+    {
+        cautiousPathingAdvantage = Mathf.Clamp(value, MIN_CAUTIOUS_PATHING_ADVANTAGE, MAX_CAUTIOUS_PATHING_ADVANTAGE);
+        UpdateCautiousPathingAdvantageText(cautiousPathingAdvantage);
+    }
+
 
     private void UpdateResourceCountText(int value)
     {
@@ -205,5 +243,17 @@ public class stats_for_simulation : MonoBehaviour
     {
         if (flyAdvantageText != null)
             flyAdvantageText.text = value.ToString("F1");
+    }
+
+    private void UpdateCarcassNutritionText(float value)
+    {
+        if (carcassNutritionText != null)
+            carcassNutritionText.text = value.ToString("F1") + "x";
+    }
+
+    private void UpdateCautiousPathingAdvantageText(float value)
+    {
+        if (cautiousPathingAdvantageText != null)
+            cautiousPathingAdvantageText.text = value.ToString("F2");
     }
 }

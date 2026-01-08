@@ -238,13 +238,16 @@ public class Traits : MonoBehaviour
         // Metabolic efficiency: 0.0 metabolism -> 0.5x energy, 1.0 metabolism -> 1.5x energy
         float metabolicEfficiency = Mathf.Lerp(0.5f, 1.5f, metabolic_rate);
         
-        // ULTRA OP CARNIVORE: Carnivores extract 8x base energy from meat
         if (is_carnivore)
-            metabolicEfficiency *= 8.0f; // 8x energy gain for carnivores (EXTREMELY OP)
+            metabolicEfficiency *= 8.0f;
         
-        // ULTRA OP SCAVENGER: Scavengers extract 6x energy from carcasses
         if (is_scavenging)
-            metabolicEfficiency *= 6.0f; // 6x energy gain for scavengers (EXTREMELY OP)
+        {
+            float carcassMultiplier = 6.0f;
+            if (stats_for_simulation.Instance != null)
+                carcassMultiplier = stats_for_simulation.Instance.carcassNutrition;
+            metabolicEfficiency *= carcassMultiplier;
+        }
         
         float gainedEnergy = energy * metabolicEfficiency;
         currentEnergy += gainedEnergy;
