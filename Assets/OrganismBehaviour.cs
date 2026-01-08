@@ -762,8 +762,9 @@ public class OrganismBehaviour : MonoBehaviour
         
         if (traits != null && traits.can_cautiousPathing)
         {
-            //Cautious organisms use 70% less energy for pathfinding
             cautiousCostMultiplier = 0.3f;
+            if (stats_for_simulation.Instance != null)
+                cautiousCostMultiplier = stats_for_simulation.Instance.cautiousPathingAdvantage;
             
             //higher cost near carnivores
             Vector2 cellPos = GetNodePosition(toNode);

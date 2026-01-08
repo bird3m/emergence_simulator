@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 
 /*
-*Class that implements the A* algorithm. It has 2 overload versions of the SolveAstar function. 
+*Class that implements the A* algorithm. 
 */
 public class PathfindingAstar : MonoBehaviour
 {
@@ -49,8 +49,8 @@ public class PathfindingAstar : MonoBehaviour
 
     /*
      * A* Pathfinding Algorithm
-     * Time: O((V + E) * log V) because visiting V nodes with E edges and heap operations
-     * Space: O(V) because storing open list, closed set and dictionaries
+     * Time: O((V + E) * log V) because we are visiting V nodes with E edges and heap operations
+     * Space: O(V) because we are storing open list, closed set and dictionaries
      */
     public static AStarResult SolveAstar(GraphNode start, GraphNode goal, Func<GraphNode, uint> heuristicFunc, Func<GraphNode, GraphNode, uint> costFunc)  
     {
