@@ -170,7 +170,7 @@ public class Traits : MonoBehaviour
     public float GetMoveEnergyCostPerUnit(float effectiveMass, float speed)
     {
         const float eps = 1e-4f;
-        float cost = (0.30f + 0.70f * effectiveMass) / (0.35f + speed + eps);
+        float cost = (effectiveMass) / (0.35f + speed + eps);
         return Mathf.Clamp(cost, 0.1f, 3.0f);
     }
 
